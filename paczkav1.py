@@ -100,6 +100,8 @@ def ustaw_wymiary_paczki(przewoznik):
         return "150 100 50"
     elif przewoznik == "Orlen Paczka":
         return "41 38 60"
+    elif przewoznik == "Salon":
+        return "32 34 64"
     else:
         return ""
 
@@ -113,7 +115,7 @@ with col1:
     st.subheader("Wybierz przewoźnika")
     przewoznik = st.selectbox(
         "Wybierz przewoźnika:",
-        ["", "InPost Paczkomat", "Poczta Polska Kurier", "DPD Kurier", "Orlen Paczka"]
+        ["", "InPost Paczkomat", "Poczta Polska Kurier", "DPD Kurier", "Orlen Paczka", "Salon"]
     )
     
     # Automatyczne ustawienie wymiarów pudełka
