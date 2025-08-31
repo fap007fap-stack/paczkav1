@@ -1,6 +1,5 @@
-import dash
-from dash import dcc, html, Input, Output, State
-import plotly.graph_objs as go
+import streamlit as st
+import plotly.graph_objects as go
 import numpy as np
 from itertools import permutations
 import random
@@ -114,124 +113,90 @@ def cuboid_faces(verts):
         [verts[j] for j in [4,7,3,0]]
     ]
 
-# === Dash UI ===
+# === Streamlit UI ===
 
-app = dash.Dash(__name__)
-app.title = "3D Packing Online"
+st.set_page_config(page_title="3D Packing Online", layout="wide")
+st.title("Pakowanie produktów 3D (Online)")
 
-app.layout = html.Div([
-    html.H2("Pakowanie produktów 3D (Online)"),
-    html.Div([
-        html.H4("Dodaj produkt"),
-        html.Div([
-            "Szerokość: ", dcc.Input(id='w', type='number', style={'width': '80px'}),
-            "Wysokość: ", dcc.Input(id='h', type='number', style={'width': '80px'}),
-            "Głębokość: ", dcc.Input(id='d', type='number', style={'width': '80px'}),
-            html.Button('Dodaj', id='add', n_clicks=0),
-        ]),
-        html.Br(),
-        html.H4("Produkty"),
-        html.Ul(id='product-list'),
-        html.Br(),
-        html.H4("Maksymalne wymiary pudełka (X Y Z):"),
-        dcc.Input(id='boxdims', placeholder='np. 30 20 10', style={'width': '170px'}),
-        html.Button('Pakuj produkty', id='pack', n_clicks=0),
-    ], style={'display': 'inline-block', 'verticalAlign': 'top', 'width': '30%'}),
-    html.Div([
-        dcc.Graph(id='plot3d', style={'height': '500px'}),
-        html.Div(id='summary', style={'marginTop': 20, 'fontSize': 18}),
-    ], style={'display': 'inline-block', 'width': '65%'}),
-    dcc.Store(id='products', data=[]),
-])
+if "products" not in st.session_state:
+    st.session_state.products = []
 
-@app.callback(
-    Output('products', 'data'),
-    Output('product-list', 'children'),
-    Input('add', 'n_clicks'),
-    State('w', 'value'),
-    State('h', 'value'),
-    State('d', 'value'),
-    State('products', 'data'),
-    prevent_initial_call=True
-)
-def add_product(n_clicks, w, h, d, products):
-    if w and h and d:
-        name = f"P{len(products)+1}"
-        products.append({'w': w, 'h': h, 'd': d, 'name': name})
-    items = [html.Li(f"{p['name']}: {p['w']} x {p['h']} x {p['d']}") for p in products]
-    return products, items
+with st.sidebar:
+    st.header("Dodaj produkt")
+    w = st.number_input("Szerokość", min_value=0.1, value=1.0)
+    h = st.number_input("Wysokość", min_value=0.1, value=1.0)
+    d = st.number_input("Głębokość", min_value=0.1, value=1.0)
+    if st.button("Dodaj produkt"):
+        name = f"P{len(st.session_state.products)+1}"
+        st.session_state.products.append({"w": w, "h": h, "d": d, "name": name})
 
-@app.callback(
-    Output('plot3d', 'figure'),
-    Output('summary', 'children'),
-    Input('pack', 'n_clicks'),
-    State('products', 'data'),
-    State('boxdims', 'value'),
-    prevent_initial_call=True
-)
-def pack_and_plot(n_clicks, products, boxdims):
-    if not products:
-        return go.Figure(), "Brak produktów!"
-    try:
-        box_limit = tuple(map(float, boxdims.strip().split()))
-        if len(box_limit) != 3:
-            raise ValueError
-    except:
-        return go.Figure(), "Nieprawidłowe wymiary pudełka!"
+    st.header("Lista produktów")
+    for p in st.session_state.products:
+        st.write(f"{p['name']}: {p['w']} x {p['h']} x {p['d']}")
 
-    product_objs = [Product(p['w'], p['h'], p['d'], p['name']) for p in products]
-    box_size, layout = pack_products(product_objs, box_limit)
-    if layout is None:
-        return go.Figure(), "Nie udało się zmieścić produktów w zadanym pudełku!"
+    st.header("Wymiary pudełka (X Y Z)")
+    boxdims_str = st.text_input("Np. 30 20 10", "30 20 10")
+    if st.button("Pakuj produkty"):
+        try:
+            box_limit = tuple(map(float, boxdims_str.strip().split()))
+            if len(box_limit) != 3:
+                raise ValueError
+        except:
+            st.error("Nieprawidłowe wymiary pudełka!")
+            box_limit = None
 
-    fig = go.Figure()
-    colors = ['red', 'blue', 'green', 'orange', 'purple', 'yellow', 'cyan', 'magenta']
-    for idx, p in enumerate(layout):
-        verts = cuboid_data(p.position, p.dimensions)
-        faces = cuboid_faces(verts)
-        for face in faces:
-            x = [vertex[0] for vertex in face] + [face[0][0]]
-            y = [vertex[1] for vertex in face] + [face[0][1]]
-            z = [vertex[2] for vertex in face] + [face[0][2]]
-            fig.add_trace(go.Scatter3d(
-                x=x, y=y, z=z,
-                mode='lines',
-                line=dict(color=colors[idx % len(colors)], width=5),
-                showlegend=False
-            ))
-        cx = p.position[0] + p.dimensions[0]/2
-        cy = p.position[1] + p.dimensions[1]/2
-        cz = p.position[2] + p.dimensions[2]/2
-        fig.add_trace(go.Scatter3d(
-            x=[cx], y=[cy], z=[cz],
-            text=[p.name],
-            mode='text',
-            showlegend=False
-        ))
+        if st.session_state.products and box_limit:
+            product_objs = [Product(p['w'], p['h'], p['d'], p['name']) for p in st.session_state.products]
+            box_size, layout = pack_products(product_objs, box_limit)
 
-    fig.update_layout(
-        scene=dict(
-            xaxis=dict(title="X [cm]", range=[0, box_size[0]]),
-            yaxis=dict(title="Y [cm]", range=[0, box_size[1]]),
-            zaxis=dict(title="Z [cm]", range=[0, box_size[2]])
-        ),
-        margin=dict(l=0,r=0,b=0,t=0)
-    )
+            if layout is None:
+                st.error("Nie udało się zmieścić produktów w zadanym pudełku!")
+            else:
+                # Wizualizacja 3D
+                fig = go.Figure()
+                colors = ['red', 'blue', 'green', 'orange', 'purple', 'yellow', 'cyan', 'magenta']
+                for idx, p in enumerate(layout):
+                    verts = cuboid_data(p.position, p.dimensions)
+                    faces = cuboid_faces(verts)
+                    for face in faces:
+                        x = [vertex[0] for vertex in face] + [face[0][0]]
+                        y = [vertex[1] for vertex in face] + [face[0][1]]
+                        z = [vertex[2] for vertex in face] + [face[0][2]]
+                        fig.add_trace(go.Scatter3d(
+                            x=x, y=y, z=z,
+                            mode='lines',
+                            line=dict(color=colors[idx % len(colors)], width=5),
+                            showlegend=False
+                        ))
+                    cx = p.position[0] + p.dimensions[0]/2
+                    cy = p.position[1] + p.dimensions[1]/2
+                    cz = p.position[2] + p.dimensions[2]/2
+                    fig.add_trace(go.Scatter3d(
+                        x=[cx], y=[cy], z=[cz],
+                        text=[p.name],
+                        mode='text',
+                        showlegend=False
+                    ))
 
-    V_box = box_size[0]*box_size[1]*box_size[2]
-    V_products = sum(p.dimensions[0]*p.dimensions[1]*p.dimensions[2] for p in layout)
-    filled_percent = (V_products/V_box)*100
-    empty_percent = 100-filled_percent
+                fig.update_layout(
+                    scene=dict(
+                        xaxis=dict(title="X [cm]", range=[0, box_size[0]]),
+                        yaxis=dict(title="Y [cm]", range=[0, box_size[1]]),
+                        zaxis=dict(title="Z [cm]", range=[0, box_size[2]])
+                    ),
+                    margin=dict(l=0,r=0,b=0,t=0)
+                )
 
-    summary_text = (
-        f"Pudełko: {box_size[0]:.2f} x {box_size[1]:.2f} x {box_size[2]:.2f} cm\n"
-        f"Objętość pudełka: {V_box:.2f} cm³\n"
-        f"Objętość produktów: {V_products:.2f} cm³\n"
-        f"Zajętość: {filled_percent:.2f}%\n"
-        f"Pusta przestrzeń: {empty_percent:.2f}%"
-    )
-    return fig, summary_text
+                st.plotly_chart(fig, use_container_width=True)
 
-# === Uruchomienie aplikacji (Dash 3.x) ===
-if __name__ == "__main__":
-    app.run(debug=True)
+                V_box = box_size[0]*box_size[1]*box_size[2]
+                V_products = sum(p.dimensions[0]*p.dimensions[1]*p.dimensions[2] for p in layout)
+                filled_percent = (V_products/V_box)*100
+                empty_percent = 100-filled_percent
+
+                st.subheader("Podsumowanie")
+                st.text(f"Pudełko: {box_size[0]:.2f} x {box_size[1]:.2f} x {box_size[2]:.2f} cm")
+                st.text(f"Objętość pudełka: {V_box:.2f} cm³")
+                st.text(f"Objętość produktów: {V_products:.2f} cm³")
+                st.text(f"Zajętość: {filled_percent:.2f}%")
+                st.text(f"Pusta przestrzeń: {empty_percent:.2f}%")
