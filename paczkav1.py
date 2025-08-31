@@ -99,25 +99,29 @@ def cuboid_faces(verts):
 st.set_page_config(page_title="3D Packing Online", layout="wide")
 st.title("Pakowanie produktów 3D (Online)")
 
+# --- Inicjalizacja stanu ---
 if "products" not in st.session_state:
     st.session_state.products = []
 
-# --- Sidebar controls ---
+# --- Sidebar ---
 with st.sidebar:
     st.header("Dodaj produkt")
-    w = st.number_input("Szerokość", min_value=0.1, value=32.0, step=0.1, key="w_input")
-    h = st.number_input("Wysokość", min_value=0.1, value=34.0, step=0.1, key="h_input")
-    d = st.number_input("Głębokość", min_value=0.1, value=64.0, step=0.1, key="d_input")
+    
+    w = st.number_input("Szerokość", min_value=0.1, value=0.0, step=0.1, format="%.2f", key="w_input")
+    h = st.number_input("Wysokość", min_value=0.1, value=0.0, step=0.1, format="%.2f", key="h_input")
+    d = st.number_input("Głębokość", min_value=0.1, value=0.0, step=0.1, format="%.2f", key="d_input")
+    
+    st.caption("Maksymalne wymiary: 32 × 34 × 64")
 
     if st.button("Dodaj produkt"):
-        name = f"P{len(st.session_state.products)+1}"
-        st.session_state.products.append({"w": w, "h": h, "d": d, "name": name})
-        st.session_state.w_input = 32.0
-        st.session_state.h_input = 34.0
-        st.session_state.d_input = 64.0
-
-    if st.button("Resetuj listę"):
-        st.session_state.products = []
+        if w <= 0 or h <= 0 or d <= 0:
+            st.warning("Podaj poprawne wymiary!")
+        else:
+            name = f"P{len(st.session_state.products)+1}"
+            st.session_state.products.append({"w": w, "h": h, "d": d, "name": name})
+            st.session_state.w_input = 0.0
+            st.session_state.h_input = 0.0
+            st.session_state.d_input = 0.0
 
     st.header("Lista produktów")
     for idx, p in enumerate(st.session_state.products):
@@ -130,7 +134,7 @@ with st.sidebar:
     st.header("Wymiary pudełka (X Y Z)")
     boxdims_str = st.text_input("Np. 30 20 10", "32 34 64")
 
-# --- Main panel: packing results ---
+# --- Główna część: wynik pakowania ---
 st.subheader("Wynik pakowania")
 
 if st.button("Pakuj produkty"):
@@ -152,32 +156,26 @@ if st.button("Pakuj produkty"):
             if layout is None:
                 st.error("Nie udało się zmieścić produktów w zadanym pudełku!")
             else:
-                # 3D plot
                 fig = go.Figure()
-                colors = ['red', 'blue', 'green', 'orange', 'purple', 'yellow', 'cyan', 'magenta']
+                colors = ['red','blue','green','orange','purple','yellow','cyan','magenta']
                 for idx, p in enumerate(layout):
                     verts = cuboid_data(p.position, p.dimensions)
                     faces = cuboid_faces(verts)
                     for face in faces:
-                        x = [vertex[0] for vertex in face] + [face[0][0]]
-                        y = [vertex[1] for vertex in face] + [face[0][1]]
-                        z = [vertex[2] for vertex in face] + [face[0][2]]
-                        fig.add_trace(go.Scatter3d(
-                            x=x, y=y, z=z,
-                            mode='lines',
-                            line=dict(color=colors[idx % len(colors)], width=5),
-                            showlegend=False
-                        ))
+                        x = [v[0] for v in face] + [face[0][0]]
+                        y = [v[1] for v in face] + [face[0][1]]
+                        z = [v[2] for v in face] + [face[0][2]]
+                        fig.add_trace(go.Scatter3d(x=x, y=y, z=z,
+                                                   mode='lines',
+                                                   line=dict(color=colors[idx%len(colors)], width=5),
+                                                   showlegend=False))
                     cx = p.position[0] + p.dimensions[0]/2
                     cy = p.position[1] + p.dimensions[1]/2
                     cz = p.position[2] + p.dimensions[2]/2
-                    fig.add_trace(go.Scatter3d(
-                        x=[cx], y=[cy], z=[cz],
-                        text=[p.name],
-                        mode='text',
-                        showlegend=False
-                    ))
-
+                    fig.add_trace(go.Scatter3d(x=[cx], y=[cy], z=[cz],
+                                               text=[p.name],
+                                               mode='text',
+                                               showlegend=False))
                 fig.update_layout(
                     scene=dict(
                         xaxis=dict(title="X [cm]", range=[0, box_size[0]]),
@@ -186,14 +184,12 @@ if st.button("Pakuj produkty"):
                     ),
                     margin=dict(l=0,r=0,b=0,t=0)
                 )
-
                 st.plotly_chart(fig, use_container_width=True)
 
-                # summary
                 V_box = box_size[0]*box_size[1]*box_size[2]
                 V_products = sum(p.dimensions[0]*p.dimensions[1]*p.dimensions[2] for p in layout)
                 filled_percent = (V_products/V_box)*100
-                empty_percent = 100 - filled_percent
+                empty_percent = 100-filled_percent
 
                 st.subheader("Podsumowanie")
                 st.text(f"Pudełko: {box_size[0]:.2f} x {box_size[1]:.2f} x {box_size[2]:.2f} cm")
