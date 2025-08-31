@@ -131,15 +131,15 @@ with col1:
         st.session_state.products.append({"w":w,"h":h,"d":d,"name":name})
 
     st.subheader("Lista produktów")
-    products_to_show = st.session_state.products.copy()
-    for p in products_to_show:
+    # Iteracja po kopii listy, aby uniknąć problemów przy usuwaniu
+    for idx, p in enumerate(st.session_state.products.copy()):
         colp1, colp2 = st.columns([4,1])
         with colp1:
             st.write(f"{p['name']}: {p['w']} x {p['h']} x {p['d']}")
         with colp2:
-            if st.button("❌", key=p['name']):
-                st.session_state.products.remove(p)
-                break
+            if st.button("❌", key=f"remove_{p['name']}_{idx}"):
+                st.session_state.products.pop(idx)
+                st.experimental_rerun()  # wymusza odświeżenie UI po usunięciu
 
     st.markdown("</div>", unsafe_allow_html=True)
 
