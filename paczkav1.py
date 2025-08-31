@@ -108,14 +108,15 @@ with col1:
         st.session_state.products.append({"w":w,"h":h,"d":d,"name":name})
 
     st.subheader("Lista produktów")
-    for i, p in enumerate(st.session_state.products.copy()):  # <-- iterate over copy
+    products_to_show = st.session_state.products.copy()
+    for p in products_to_show:
         colp1, colp2 = st.columns([4,1])
         with colp1:
             st.write(f"{p['name']}: {p['w']} x {p['h']} x {p['d']}")
         with colp2:
-            if st.button("❌", key=f"del_{i}"):
-                st.session_state.products.remove(p)  # <-- remove safely by value
-                st.experimental_rerun()
+            if st.button("❌", key=p['name']):
+                st.session_state.products.remove(p)
+                break  # przerwij pętlę, Streamlit odświeży UI automatycznie
 
     st.subheader("MAX wymiary pudełka (X Y Z)")
     boxdims_str = st.text_input("Np. 30 20 10", "32 34 64")
