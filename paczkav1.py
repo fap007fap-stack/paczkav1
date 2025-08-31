@@ -100,7 +100,7 @@ with col1:
     """, unsafe_allow_html=True)
     
     st.subheader("Dodaj produkt")
-    w = st.number_input("Szerokość", min_value=0.1, value=1.0)
+    w = st.number_input("Szerokość", min_value=0.1, value=)
     h = st.number_input("Wysokość", min_value=0.1, value=1.0)
     d = st.number_input("Głębokość", min_value=0.1, value=1.0)
     if st.button("Dodaj produkt"):
@@ -118,7 +118,7 @@ with col1:
                 st.experimental_rerun()
 
     st.subheader("Maksymalne wymiary pudełka (X Y Z)")
-    boxdims_str = st.text_input("Np. 30 20 10", "")
+    boxdims_str = st.text_input("Np. 30 20 10", "32 34 64")
 
     st.markdown("</div>", unsafe_allow_html=True)
 
@@ -203,4 +203,5 @@ with col2:
                     st.text(f"Objętość produktów: {V_products:.2f} cm³")
                     st.text(f"Wypełnienie: {filled_percent:.2f}%")
                     st.text(f"Pusta przestrzeń: {empty_percent:.2f}%")
+
 
