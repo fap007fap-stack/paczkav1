@@ -234,4 +234,5 @@ def pack_and_plot(n_clicks, products, boxdims):
     return fig, summary_text
 
 if __name__ == "__main__":
-    app.run_server(debug=True) a co pwiesz o tej apce ? 
+
+    app.run_server(debug=True)
