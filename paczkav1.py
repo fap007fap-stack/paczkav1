@@ -174,18 +174,31 @@ with col2:
                     verts=cuboid_data(p.position,p.dimensions)
                     faces=cuboid_faces(verts)
                     highlight = p.name in st.session_state.selected_products
-                    color = 'lime' if highlight else colors[idx%len(colors)]
-                    width = 10 if highlight else 5
-                    for face in faces:
-                        x=[v[0] for v in face]+[face[0][0]]
-                        y=[v[1] for v in face]+[face[0][1]]
-                        z=[v[2] for v in face]+[face[0][2]]
-                        fig.add_trace(go.Scatter3d(
+                    if highlight:
+                        # wypełniony kolor
+                        x=[v[0] for v in verts]
+                        y=[v[1] for v in verts]
+                        z=[v[2] for v in verts]
+                        fig.add_trace(go.Mesh3d(
                             x=x, y=y, z=z,
-                            mode='lines',
-                            line=dict(color=color, width=width),
-                            showlegend=False
+                            color='lime',
+                            opacity=0.4,
+                            alphahull=0,
+                            name=p.name
                         ))
+                    else:
+                        # kontury
+                        color = colors[idx % len(colors)]
+                        for face in faces:
+                            x=[v[0] for v in face]+[face[0][0]]
+                            y=[v[1] for v in face]+[face[0][1]]
+                            z=[v[2] for v in face]+[face[0][2]]
+                            fig.add_trace(go.Scatter3d(
+                                x=x, y=y, z=z,
+                                mode='lines',
+                                line=dict(color=color, width=5),
+                                showlegend=False
+                            ))
                     cx=p.position[0]+p.dimensions[0]/2
                     cy=p.position[1]+p.dimensions[1]/2
                     cz=p.position[2]+p.dimensions[2]/2
