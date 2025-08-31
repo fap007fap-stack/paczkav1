@@ -116,22 +116,27 @@ with col1:
     w = st.number_input("Szerokość", min_value=0.1, value=1.0)
     h = st.number_input("Wysokość", min_value=0.1, value=1.0)
     d = st.number_input("Głębokość", min_value=0.1, value=1.0)
+    name_input = st.text_input("Nazwa produktu (opcjonalna):", "")
     if st.button("Dodaj produkt"):
-        name = f"P{len(st.session_state.products)+1}"
+        name = name_input if name_input.strip() else f"P{len(st.session_state.products)+1}"
         st.session_state.products.append({"w":w,"h":h,"d":d,"name":name})
 
     st.subheader("Lista produktów")
+    remove_idx = None
     selected_names = []
-    for p in st.session_state.products:
+    for idx, p in enumerate(st.session_state.products):
         colp1, colp2 = st.columns([4,1])
         with colp1:
-            checked = st.checkbox(f"{p['name']}: {p['w']} x {p['h']} x {p['d']}", value=(p['name'] in st.session_state.selected_products), key=f"check_{p['name']}")
+            checked = st.checkbox(f"{p['name']}: {p['w']} x {p['h']} x {p['d']}", 
+                                  value=(p['name'] in st.session_state.selected_products), 
+                                  key=f"check_{p['name']}")
             if checked:
                 selected_names.append(p['name'])
         with colp2:
             if st.button("❌", key=f"remove_{p['name']}"):
-                st.session_state.products.remove(p)
-                break
+                remove_idx = idx
+    if remove_idx is not None:
+        st.session_state.products.pop(remove_idx)
     st.session_state.selected_products = selected_names
 
 with col2:
