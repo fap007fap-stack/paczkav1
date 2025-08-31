@@ -130,20 +130,25 @@ with col1:
         name = f"P{len(st.session_state.products)+1}"
         st.session_state.products.append({"w":w,"h":h,"d":d,"name":name})
 
-   st.subheader("Lista produktów")
-for idx in range(len(st.session_state.products)):
-    p = st.session_state.products[idx]
-    colp1, colp2 = st.columns([4,1])
-    with colp1:
-        st.write(f"{p['name']}: {p['w']} x {p['h']} x {p['d']}")
-    with colp2:
-        if st.button("❌", key=f"remove_{p['name']}_{idx}"):
-            st.session_state.products.pop(idx)
-            break  # przerwij pętlę, Streamlit odświeży UI
+    # --- Lista produktów z przyciskami usuwania ---
+    st.subheader("Lista produktów")
+    for idx in range(len(st.session_state.products)):
+        p = st.session_state.products[idx]
+        colp1, colp2 = st.columns([4,1])
+        with colp1:
+            st.write(f"{p['name']}: {p['w']} x {p['h']} x {p['d']}")
+        with colp2:
+            if st.button("❌", key=f"remove_{p['name']}_{idx}"):
+                st.session_state.products.pop(idx)
+                break  # przerwij pętlę po usunięciu
 
-st.markdown("</div>", unsafe_allow_html=True)
+    # --- Przycisk do wyczyszczenia całej listy ---
+    if st.button("Wyczyść wszystkie produkty"):
+        st.session_state.products.clear()
 
-# --- Right panel: visualization 3D i podsumowanie ---
+    st.markdown("</div>", unsafe_allow_html=True)
+
+# --- Right panel: wizualizacja 3D i podsumowanie ---
 with col2:
     st.subheader("Wizualizacja pakowania")
     if st.button("Pakuj produkty"):
@@ -224,6 +229,3 @@ with col2:
                     st.text(f"Objętość produktów: {V_products:.2f} cm³")
                     st.text(f"Wypełnienie: {filled_percent:.2f}%")
                     st.text(f"Pusta przestrzeń: {empty_percent:.2f}%")
-
-
-
