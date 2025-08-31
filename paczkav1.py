@@ -5,7 +5,7 @@ import numpy as np
 from itertools import permutations
 import random
 
-# === Packing logic from your code ===
+# === Packing logic ===
 
 class Product:
     def __init__(self, width, height, depth, name=""):
@@ -93,7 +93,6 @@ def pack_products(products, box_limit):
 def cuboid_data(pos, size):
     x, y, z = pos
     dx, dy, dz = size
-    # Vertices of the cuboid
     return np.array([
         [x, y, z],
         [x+dx, y, z],
@@ -233,6 +232,6 @@ def pack_and_plot(n_clicks, products, boxdims):
     )
     return fig, summary_text
 
+# === Uruchomienie aplikacji (Dash 3.x) ===
 if __name__ == "__main__":
-
-    app.run_server(debug=True)
+    app.run(debug=True)
