@@ -100,7 +100,7 @@ with col1:
     """, unsafe_allow_html=True)
     
     st.subheader("Dodaj produkt")
-    w = st.number_input("Szerokość", min_value=0.1, value=)
+    w = st.number_input("Szerokość", min_value=0.1)
     h = st.number_input("Wysokość", min_value=0.1, value=1.0)
     d = st.number_input("Głębokość", min_value=0.1, value=1.0)
     if st.button("Dodaj produkt"):
@@ -203,5 +203,6 @@ with col2:
                     st.text(f"Objętość produktów: {V_products:.2f} cm³")
                     st.text(f"Wypełnienie: {filled_percent:.2f}%")
                     st.text(f"Pusta przestrzeń: {empty_percent:.2f}%")
+
 
 
