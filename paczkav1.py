@@ -91,7 +91,6 @@ if "products" not in st.session_state:
 if "selected_products" not in st.session_state:
     st.session_state.selected_products = []
 
-# --- Helper for box sizes ---
 def ustaw_wymiary_paczki(przewoznik):
     sizes = {
         "InPost Paczkomat": "41 38 64",
@@ -157,6 +156,7 @@ with col2:
                 st.error("Nie udało się zmieścić produktów!")
             else:
                 fig = go.Figure()
+                # Pudełko
                 verts = cuboid_data((0,0,0), box_size)
                 faces = cuboid_faces(verts)
                 for face in faces:
@@ -202,3 +202,16 @@ with col2:
                     aspectmode='data'
                 ), margin=dict(l=0,r=0,b=0,t=0))
                 st.plotly_chart(fig, use_container_width=True)
+
+                # --- Podsumowanie ---
+                V_box = box_size[0]*box_size[1]*box_size[2]
+                V_products = sum(p.dimensions[0]*p.dimensions[1]*p.dimensions[2] for p in layout)
+                filled_percent = (V_products/V_box)*100
+                empty_percent = 100 - filled_percent
+
+                st.subheader("Podsumowanie")
+                st.text(f"Wymiary pudełka: {box_size[0]:.2f} x {box_size[1]:.2f} x {box_size[2]:.2f} cm")
+                st.text(f"Objętość pudełka: {V_box:.2f} cm³")
+                st.text(f"Objętość produktów: {V_products:.2f} cm³")
+                st.text(f"Wypełnienie: {filled_percent:.2f}%")
+                st.text(f"Pusta przestrzeń: {empty_percent:.2f}%")
