@@ -84,8 +84,8 @@ def cuboid_faces(verts):
             [verts[j] for j in [4,7,3,0]]]
 
 # --- Streamlit UI ---
-st.set_page_config(page_title="3D Packing", layout="wide")
-st.title("Pakowanie produktów 3D")
+st.set_page_config(page_title="PAKOWANIE Z MICHAŁEM", layout="wide")
+st.title("PAKOWANIE Z MICHAŁEM")
 
 if "products" not in st.session_state:
     st.session_state.products = []
@@ -93,13 +93,13 @@ if "products" not in st.session_state:
 # --- Layout: two columns ---
 col1, col2 = st.columns([1,2])
 
-# --- Left panel: controls with bluegrey background and smaller font ---
+# --- Left panel: scrollable bluegrey wstążka ---
 with col1:
     st.markdown("""
-        <div style="background-color:lightsteelblue; padding:10px; border-radius:5px; font-size:14px;">
+    <div style="background-color:lightsteelblue; padding:10px; border-radius:5px; font-size:14px; max-height:600px; overflow-y:auto;">
     """, unsafe_allow_html=True)
     
-    st.header("Dodaj produkt")
+    st.subheader("Dodaj produkt")
     w = st.number_input("Szerokość", min_value=0.1, value=1.0)
     h = st.number_input("Wysokość", min_value=0.1, value=1.0)
     d = st.number_input("Głębokość", min_value=0.1, value=1.0)
@@ -107,7 +107,7 @@ with col1:
         name = f"P{len(st.session_state.products)+1}"
         st.session_state.products.append({"w":w,"h":h,"d":d,"name":name})
 
-    st.header("Lista produktów")
+    st.subheader("Lista produktów")
     for i,p in enumerate(st.session_state.products):
         colp1, colp2 = st.columns([4,1])
         with colp1:
@@ -117,12 +117,12 @@ with col1:
                 st.session_state.products.pop(i)
                 st.experimental_rerun()
 
-    st.header("Wymiary pudełka (X Y Z)")
+    st.subheader("Wymiary pudełka (X Y Z)")
     boxdims_str = st.text_input("Np. 30 20 10", "30 20 10")
-    
+
     st.markdown("</div>", unsafe_allow_html=True)
 
-# --- Right panel: visualization with frame ---
+# --- Right panel: visualization 3D i podsumowanie ---
 with col2:
     st.subheader("Wizualizacja pakowania")
     if st.button("Pakuj produkty"):
@@ -144,8 +144,7 @@ with col2:
                     st.error("Nie udało się zmieścić produktów!")
                 else:
                     fig = go.Figure()
-
-                    # Pudełko z kolorem kartonu
+                    # Pudełko z kartonowym kolorem
                     verts = cuboid_data((0,0,0), box_size)
                     faces = cuboid_faces(verts)
                     for face in faces:
@@ -190,10 +189,7 @@ with col2:
                         aspectmode='data'
                     ), margin=dict(l=0,r=0,b=0,t=0))
 
-                    # Ramka wokół wykresu
-                    st.markdown('<div style="border:2px solid gray; padding:5px; border-radius:5px">', unsafe_allow_html=True)
                     st.plotly_chart(fig, use_container_width=True)
-                    st.markdown('</div>', unsafe_allow_html=True)
 
                     # --- Podsumowanie ---
                     V_box = box_size[0]*box_size[1]*box_size[2]
