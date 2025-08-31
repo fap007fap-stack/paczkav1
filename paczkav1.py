@@ -3,7 +3,7 @@ import plotly.graph_objects as go
 import numpy as np
 from itertools import permutations
 
-# --- Packing logic (BLB) ---
+# --- Packing logic ---
 class Product:
     def __init__(self, width, height, depth, name=""):
         self.original_dims = (width, height, depth)
@@ -83,45 +83,34 @@ def cuboid_faces(verts):
             [verts[j] for j in [1,2,6,5]],
             [verts[j] for j in [4,7,3,0]]]
 
-# --- Streamlit UI ---
-st.set_page_config(page_title="PAKOWANIE Z MICHAŁEM", layout="wide")
-st.title("PAKOWANIE Z MICHAŁEM")
+# --- Streamlit setup ---
+st.set_page_config(page_title="Pakowanie", layout="wide")
 
 if "products" not in st.session_state:
     st.session_state.products = []
-if "selected_product" not in st.session_state:
-    st.session_state.selected_product = None
+if "selected_products" not in st.session_state:
+    st.session_state.selected_products = []
 
-# --- Funkcja ustawiająca wymiary pudełka na podstawie przewoźnika ---
+# --- Helper for box sizes ---
 def ustaw_wymiary_paczki(przewoznik):
-    if przewoznik == "InPost Paczkomat":
-        return "41 38 64"
-    elif przewoznik == "Poczta Polska Kurier":
-        return "65 42 40"
-    elif przewoznik == "DPD Kurier":
-        return "150 100 50"
-    elif przewoznik == "Orlen Paczka":
-        return "41 38 60"
-    elif przewoznik == "Salon":
-        return "32 34 64"
-    else:
-        return ""
+    sizes = {
+        "InPost Paczkomat": "41 38 64",
+        "Poczta Polska Kurier": "65 42 40",
+        "DPD Kurier": "150 100 50",
+        "Orlen Paczka": "41 38 60",
+        "Salon": "32 34 64"
+    }
+    return sizes.get(przewoznik,"")
 
-# --- Layout: two columns ---
 col1, col2 = st.columns([1,2])
 
-# --- Left panel ---
 with col1:
-    st.markdown("""<div style="background-color:lightsteelblue; padding:10px; border-radius:5px; font-size:14px; max-height:600px; overflow-y:auto;">""", unsafe_allow_html=True)
-    
     st.subheader("Wybierz przewoźnika")
     przewoznik = st.selectbox(
-        "Wybierz przewoźnika:",
+        "Przewoźnik:",
         ["", "InPost Paczkomat", "Poczta Polska Kurier", "DPD Kurier", "Orlen Paczka", "Salon"]
     )
-    
-    domyslne_wymiary = ustaw_wymiary_paczki(przewoznik)
-    boxdims_str = st.text_input("Wymiary pudełka (X Y Z):", domyslne_wymiary)
+    boxdims_str = st.text_input("Wymiary pudełka (X Y Z)", ustaw_wymiary_paczki(przewoznik))
 
     st.subheader("Dodaj produkt")
     w = st.number_input("Szerokość", min_value=0.1, value=1.0)
@@ -132,25 +121,19 @@ with col1:
         st.session_state.products.append({"w":w,"h":h,"d":d,"name":name})
 
     st.subheader("Lista produktów")
-    product_names = [f"{p['name']}: {p['w']} x {p['h']} x {p['d']}" for p in st.session_state.products]
-    selected_idx = st.radio("Wybierz produkt do podświetlenia:", range(len(product_names)), format_func=lambda x: product_names[x]) if product_names else None
+    selected_names = []
+    for p in st.session_state.products:
+        colp1, colp2 = st.columns([4,1])
+        with colp1:
+            checked = st.checkbox(f"{p['name']}: {p['w']} x {p['h']} x {p['d']}", value=(p['name'] in st.session_state.selected_products), key=f"check_{p['name']}")
+            if checked:
+                selected_names.append(p['name'])
+        with colp2:
+            if st.button("❌", key=f"remove_{p['name']}"):
+                st.session_state.products.remove(p)
+                break
+    st.session_state.selected_products = selected_names
 
-    if selected_idx is not None:
-        st.session_state.selected_product = st.session_state.products[selected_idx]['name']
-    else:
-        st.session_state.selected_product = None
-
-    # Przyciski do usuwania produktów
-    for idx, p in enumerate(st.session_state.products):
-        if st.button("❌", key=f"remove_{p['name']}_{idx}"):
-            st.session_state.products.pop(idx)
-            if st.session_state.selected_product == p['name']:
-                st.session_state.selected_product = None
-            break
-
-    st.markdown("</div>", unsafe_allow_html=True)
-
-# --- Right panel: wizualizacja 3D i podsumowanie ---
 with col2:
     st.subheader("Wizualizacja pakowania")
     if st.button("Pakuj produkty"):
@@ -184,14 +167,13 @@ with col2:
                             i=[0,0,0,0], j=[1,2,3,4], k=[2,3,4,5],
                             name='Pudełko'
                         ))
-
                     colors=['red','blue','green','orange','purple','yellow','cyan','magenta']
                     for idx,p in enumerate(layout):
                         verts=cuboid_data(p.position,p.dimensions)
                         faces=cuboid_faces(verts)
-                        highlight = (st.session_state.selected_product == p.name)
+                        highlight = p.name in st.session_state.selected_products
                         color = 'lime' if highlight else colors[idx%len(colors)]
-                        line_width = 10 if highlight else 5
+                        width = 10 if highlight else 5
                         for face in faces:
                             x=[v[0] for v in face]+[face[0][0]]
                             y=[v[1] for v in face]+[face[0][1]]
@@ -199,7 +181,7 @@ with col2:
                             fig.add_trace(go.Scatter3d(
                                 x=x, y=y, z=z,
                                 mode='lines',
-                                line=dict(color=color, width=line_width),
+                                line=dict(color=color, width=width),
                                 showlegend=False
                             ))
                         cx=p.position[0]+p.dimensions[0]/2
@@ -211,24 +193,10 @@ with col2:
                             mode='text',
                             showlegend=False
                         ))
-
                     fig.update_layout(scene=dict(
                         xaxis=dict(title='X', range=[0,box_size[0]]),
                         yaxis=dict(title='Y', range=[0,box_size[1]]),
                         zaxis=dict(title='Z', range=[0,box_size[2]]),
                         aspectmode='data'
                     ), margin=dict(l=0,r=0,b=0,t=0))
-
                     st.plotly_chart(fig, use_container_width=True)
-
-                    V_box = box_size[0]*box_size[1]*box_size[2]
-                    V_products = sum(p.dimensions[0]*p.dimensions[1]*p.dimensions[2] for p in layout)
-                    filled_percent = (V_products/V_box)*100
-                    empty_percent = 100 - filled_percent
-
-                    st.subheader("Podsumowanie")
-                    st.text(f"Wymiary pudełka: {box_size[0]:.2f} x {box_size[1]:.2f} x {box_size[2]:.2f} cm")
-                    st.text(f"Objętość pudełka: {V_box:.2f} cm³")
-                    st.text(f"Objętość produktów: {V_products:.2f} cm³")
-                    st.text(f"Wypełnienie: {filled_percent:.2f}%")
-                    st.text(f"Pusta przestrzeń: {empty_percent:.2f}%")
