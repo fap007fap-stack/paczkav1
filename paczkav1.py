@@ -3,7 +3,7 @@ import plotly.graph_objects as go
 import numpy as np
 from itertools import permutations
 
-# --- Packing logic (BLB + orientation) ---
+# --- Packing logic (BLB) ---
 class Product:
     def __init__(self, width, height, depth, name=""):
         self.original_dims = (width, height, depth)
@@ -49,7 +49,7 @@ def find_best_position(product, placed, box_limit):
             x,y,z = pos
             if x+w <= box_limit[0] and y+d <= box_limit[1] and z+h <= box_limit[2]:
                 if not is_collision(pos,(w,d,h),placed):
-                    score = (x+y+z)  # BLB: minimal bottom-left-back coordinates
+                    score = (x+y+z)
                     if best_score is None or score < best_score:
                         best_score = score
                         best_pos = pos
@@ -93,8 +93,12 @@ if "products" not in st.session_state:
 # --- Layout: two columns ---
 col1, col2 = st.columns([1,2])
 
-# --- Left panel: controls ---
+# --- Left panel: controls with bluegrey background and smaller font ---
 with col1:
+    st.markdown("""
+        <div style="background-color:lightsteelblue; padding:10px; border-radius:5px; font-size:14px;">
+    """, unsafe_allow_html=True)
+    
     st.header("Dodaj produkt")
     w = st.number_input("Szerokość", min_value=0.1, value=1.0)
     h = st.number_input("Wysokość", min_value=0.1, value=1.0)
@@ -115,8 +119,10 @@ with col1:
 
     st.header("Wymiary pudełka (X Y Z)")
     boxdims_str = st.text_input("Np. 30 20 10", "30 20 10")
+    
+    st.markdown("</div>", unsafe_allow_html=True)
 
-# --- Right panel: visualization ---
+# --- Right panel: visualization with frame ---
 with col2:
     st.subheader("Wizualizacja pakowania")
     if st.button("Pakuj produkty"):
@@ -149,7 +155,7 @@ with col2:
                         fig.add_trace(go.Mesh3d(
                             x=x, y=y, z=z,
                             color='sandybrown', opacity=0.2,
-                            i=[0,0,0,0], j=[1,2,3,4], k=[2,3,4,5],  # dummy indices for mesh3d
+                            i=[0,0,0,0], j=[1,2,3,4], k=[2,3,4,5],
                             name='Pudełko'
                         ))
 
@@ -183,4 +189,21 @@ with col2:
                         zaxis=dict(title='Z', range=[0,box_size[2]]),
                         aspectmode='data'
                     ), margin=dict(l=0,r=0,b=0,t=0))
+
+                    # Ramka wokół wykresu
+                    st.markdown('<div style="border:2px solid gray; padding:5px; border-radius:5px">', unsafe_allow_html=True)
                     st.plotly_chart(fig, use_container_width=True)
+                    st.markdown('</div>', unsafe_allow_html=True)
+
+                    # --- Podsumowanie ---
+                    V_box = box_size[0]*box_size[1]*box_size[2]
+                    V_products = sum(p.dimensions[0]*p.dimensions[1]*p.dimensions[2] for p in layout)
+                    filled_percent = (V_products/V_box)*100
+                    empty_percent = 100 - filled_percent
+
+                    st.subheader("Podsumowanie")
+                    st.text(f"Wymiary pudełka: {box_size[0]:.2f} x {box_size[1]:.2f} x {box_size[2]:.2f} cm")
+                    st.text(f"Objętość pudełka: {V_box:.2f} cm³")
+                    st.text(f"Objętość produktów: {V_products:.2f} cm³")
+                    st.text(f"Wypełnienie: {filled_percent:.2f}%")
+                    st.text(f"Pusta przestrzeń: {empty_percent:.2f}%")
