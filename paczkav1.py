@@ -35,7 +35,6 @@ def find_best_position(product, placed, box_limit):
     best_pos = None
     best_dims = None
     best_score = None
-
     for dims in product.get_orientations():
         w, h, d = dims
         candidate_positions = [(0,0,0)]
@@ -51,8 +50,7 @@ def find_best_position(product, placed, box_limit):
             x, y, z = pos
             if x + w <= box_limit[0] and y + d <= box_limit[1] and z + h <= box_limit[2]:
                 if not is_collision(pos, (w,d,h), placed):
-                    # Heurystyka: minimalizujemy pustą przestrzeń
-                    score = (x + w)*(y + d)*(z + h)
+                    score = (x+w)*(y+d)*(z+h)
                     if best_score is None or score < best_score:
                         best_score = score
                         best_pos = pos
@@ -107,16 +105,16 @@ if "products" not in st.session_state:
 # --- Sidebar controls ---
 with st.sidebar:
     st.header("Dodaj produkt")
-    w = st.number_input("Szerokość", min_value=0.1, value=32.0, step=0.1, key="w")
-    h = st.number_input("Wysokość", min_value=0.1, value=34.0, step=0.1, key="h")
-    d = st.number_input("Głębokość", min_value=0.1, value=64.0, step=0.1, key="d")
+    w = st.number_input("Szerokość", min_value=0.1, value=32.0, step=0.1, key="w_input")
+    h = st.number_input("Wysokość", min_value=0.1, value=34.0, step=0.1, key="h_input")
+    d = st.number_input("Głębokość", min_value=0.1, value=64.0, step=0.1, key="d_input")
 
     if st.button("Dodaj produkt"):
         name = f"P{len(st.session_state.products)+1}"
         st.session_state.products.append({"w": w, "h": h, "d": d, "name": name})
-        st.session_state.w = 32.0
-        st.session_state.h = 34.0
-        st.session_state.d = 64.0
+        st.session_state.w_input = 32.0
+        st.session_state.h_input = 34.0
+        st.session_state.d_input = 64.0
 
     if st.button("Resetuj listę"):
         st.session_state.products = []
