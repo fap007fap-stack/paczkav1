@@ -136,67 +136,64 @@ with col1:
 
 with col2:
     st.subheader("Wizualizacja pakowania")
-    if st.button("Pakuj produkty"):
-        if not st.session_state.products:
-            st.error("Dodaj produkty przed pakowaniem!")
-        else:
-            try:
-                box_limit = tuple(map(float, boxdims_str.strip().split()))
-                if len(box_limit)!=3:
-                    raise ValueError
-            except:
-                st.error("Nieprawidłowe wymiary pudełka!")
-                box_limit=None
+    if st.session_state.products:
+        try:
+            box_limit = tuple(map(float, boxdims_str.strip().split()))
+            if len(box_limit)!=3:
+                raise ValueError
+        except:
+            st.error("Nieprawidłowe wymiary pudełka!")
+            box_limit=None
 
-            if box_limit:
-                product_objs = [Product(p['w'],p['h'],p['d'],p['name']) for p in st.session_state.products]
-                box_size, layout = pack_products(product_objs, box_limit)
-                if layout is None:
-                    st.error("Nie udało się zmieścić produktów!")
-                else:
-                    fig = go.Figure()
-                    verts = cuboid_data((0,0,0), box_size)
-                    faces = cuboid_faces(verts)
+        if box_limit:
+            product_objs = [Product(p['w'],p['h'],p['d'],p['name']) for p in st.session_state.products]
+            box_size, layout = pack_products(product_objs, box_limit)
+            if layout is None:
+                st.error("Nie udało się zmieścić produktów!")
+            else:
+                fig = go.Figure()
+                verts = cuboid_data((0,0,0), box_size)
+                faces = cuboid_faces(verts)
+                for face in faces:
+                    x=[v[0] for v in face]+[face[0][0]]
+                    y=[v[1] for v in face]+[face[0][1]]
+                    z=[v[2] for v in face]+[face[0][2]]
+                    fig.add_trace(go.Mesh3d(
+                        x=x, y=y, z=z,
+                        color='sandybrown', opacity=0.2,
+                        i=[0,0,0,0], j=[1,2,3,4], k=[2,3,4,5],
+                        name='Pudełko'
+                    ))
+                colors=['red','blue','green','orange','purple','yellow','cyan','magenta']
+                for idx,p in enumerate(layout):
+                    verts=cuboid_data(p.position,p.dimensions)
+                    faces=cuboid_faces(verts)
+                    highlight = p.name in st.session_state.selected_products
+                    color = 'lime' if highlight else colors[idx%len(colors)]
+                    width = 10 if highlight else 5
                     for face in faces:
                         x=[v[0] for v in face]+[face[0][0]]
                         y=[v[1] for v in face]+[face[0][1]]
                         z=[v[2] for v in face]+[face[0][2]]
-                        fig.add_trace(go.Mesh3d(
-                            x=x, y=y, z=z,
-                            color='sandybrown', opacity=0.2,
-                            i=[0,0,0,0], j=[1,2,3,4], k=[2,3,4,5],
-                            name='Pudełko'
-                        ))
-                    colors=['red','blue','green','orange','purple','yellow','cyan','magenta']
-                    for idx,p in enumerate(layout):
-                        verts=cuboid_data(p.position,p.dimensions)
-                        faces=cuboid_faces(verts)
-                        highlight = p.name in st.session_state.selected_products
-                        color = 'lime' if highlight else colors[idx%len(colors)]
-                        width = 10 if highlight else 5
-                        for face in faces:
-                            x=[v[0] for v in face]+[face[0][0]]
-                            y=[v[1] for v in face]+[face[0][1]]
-                            z=[v[2] for v in face]+[face[0][2]]
-                            fig.add_trace(go.Scatter3d(
-                                x=x, y=y, z=z,
-                                mode='lines',
-                                line=dict(color=color, width=width),
-                                showlegend=False
-                            ))
-                        cx=p.position[0]+p.dimensions[0]/2
-                        cy=p.position[1]+p.dimensions[1]/2
-                        cz=p.position[2]+p.dimensions[2]/2
                         fig.add_trace(go.Scatter3d(
-                            x=[cx], y=[cy], z=[cz],
-                            text=[p.name],
-                            mode='text',
+                            x=x, y=y, z=z,
+                            mode='lines',
+                            line=dict(color=color, width=width),
                             showlegend=False
                         ))
-                    fig.update_layout(scene=dict(
-                        xaxis=dict(title='X', range=[0,box_size[0]]),
-                        yaxis=dict(title='Y', range=[0,box_size[1]]),
-                        zaxis=dict(title='Z', range=[0,box_size[2]]),
-                        aspectmode='data'
-                    ), margin=dict(l=0,r=0,b=0,t=0))
-                    st.plotly_chart(fig, use_container_width=True)
+                    cx=p.position[0]+p.dimensions[0]/2
+                    cy=p.position[1]+p.dimensions[1]/2
+                    cz=p.position[2]+p.dimensions[2]/2
+                    fig.add_trace(go.Scatter3d(
+                        x=[cx], y=[cy], z=[cz],
+                        text=[p.name],
+                        mode='text',
+                        showlegend=False
+                    ))
+                fig.update_layout(scene=dict(
+                    xaxis=dict(title='X', range=[0,box_size[0]]),
+                    yaxis=dict(title='Y', range=[0,box_size[1]]),
+                    zaxis=dict(title='Z', range=[0,box_size[2]]),
+                    aspectmode='data'
+                ), margin=dict(l=0,r=0,b=0,t=0))
+                st.plotly_chart(fig, use_container_width=True)
