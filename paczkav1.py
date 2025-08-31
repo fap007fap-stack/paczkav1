@@ -89,6 +89,8 @@ st.title("PAKOWANIE Z MICHAŁEM")
 
 if "products" not in st.session_state:
     st.session_state.products = []
+if "selected_product" not in st.session_state:
+    st.session_state.selected_product = None
 
 # --- Funkcja ustawiająca wymiary pudełka na podstawie przewoźnika ---
 def ustaw_wymiary_paczki(przewoznik):
@@ -118,7 +120,6 @@ with col1:
         ["", "InPost Paczkomat", "Poczta Polska Kurier", "DPD Kurier", "Orlen Paczka", "Salon"]
     )
     
-    # Automatyczne ustawienie wymiarów pudełka
     domyslne_wymiary = ustaw_wymiary_paczki(przewoznik)
     boxdims_str = st.text_input("Wymiary pudełka (X Y Z):", domyslne_wymiary)
 
@@ -131,21 +132,22 @@ with col1:
         st.session_state.products.append({"w":w,"h":h,"d":d,"name":name})
 
     st.subheader("Lista produktów")
-    # Iteracja po kopii listy i zapis indeksu do usunięcia
-    remove_idx = None
-    for idx, p in enumerate(st.session_state.products.copy()):
+    for idx in range(len(st.session_state.products)):
+        p = st.session_state.products[idx]
         colp1, colp2 = st.columns([4,1])
         with colp1:
-            st.write(f"{p['name']}: {p['w']} x {p['h']} x {p['d']}")
+            if st.button(f"{p['name']}: {p['w']} x {p['h']} x {p['d']}", key=f"select_{p['name']}_{idx}"):
+                st.session_state.selected_product = p['name']
         with colp2:
             if st.button("❌", key=f"remove_{p['name']}_{idx}"):
-                remove_idx = idx
-    if remove_idx is not None:
-        st.session_state.products.pop(remove_idx)
+                st.session_state.products.pop(idx)
+                if st.session_state.selected_product == p['name']:
+                    st.session_state.selected_product = None
+                break
 
     st.markdown("</div>", unsafe_allow_html=True)
 
-# --- Right panel: visualization 3D i podsumowanie ---
+# --- Right panel: wizualizacja 3D i podsumowanie ---
 with col2:
     st.subheader("Wizualizacja pakowania")
     if st.button("Pakuj produkty"):
@@ -167,7 +169,6 @@ with col2:
                     st.error("Nie udało się zmieścić produktów!")
                 else:
                     fig = go.Figure()
-                    # Pudełko
                     verts = cuboid_data((0,0,0), box_size)
                     faces = cuboid_faces(verts)
                     for face in faces:
@@ -185,6 +186,9 @@ with col2:
                     for idx,p in enumerate(layout):
                         verts=cuboid_data(p.position,p.dimensions)
                         faces=cuboid_faces(verts)
+                        highlight = (st.session_state.selected_product == p.name)
+                        color = 'lime' if highlight else colors[idx%len(colors)]
+                        line_width = 10 if highlight else 5
                         for face in faces:
                             x=[v[0] for v in face]+[face[0][0]]
                             y=[v[1] for v in face]+[face[0][1]]
@@ -192,7 +196,7 @@ with col2:
                             fig.add_trace(go.Scatter3d(
                                 x=x, y=y, z=z,
                                 mode='lines',
-                                line=dict(color=colors[idx%len(colors)], width=5),
+                                line=dict(color=color, width=line_width),
                                 showlegend=False
                             ))
                         cx=p.position[0]+p.dimensions[0]/2
@@ -214,7 +218,6 @@ with col2:
 
                     st.plotly_chart(fig, use_container_width=True)
 
-                    # --- Podsumowanie ---
                     V_box = box_size[0]*box_size[1]*box_size[2]
                     V_products = sum(p.dimensions[0]*p.dimensions[1]*p.dimensions[2] for p in layout)
                     filled_percent = (V_products/V_box)*100
