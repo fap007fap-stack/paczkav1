@@ -130,20 +130,19 @@ with col1:
         name = f"P{len(st.session_state.products)+1}"
         st.session_state.products.append({"w":w,"h":h,"d":d,"name":name})
 
-    st.subheader("Lista produktów")
-    # Iteracja po kopii listy i zapis indeksu do usunięcia
-    remove_idx = None
-    for idx, p in enumerate(st.session_state.products.copy()):
-        colp1, colp2 = st.columns([4,1])
-        with colp1:
-            st.write(f"{p['name']}: {p['w']} x {p['h']} x {p['d']}")
-        with colp2:
-            if st.button("❌", key=f"remove_{p['name']}_{idx}"):
-                remove_idx = idx
-    if remove_idx is not None:
-        st.session_state.products.pop(remove_idx)
+   st.subheader("Lista produktów")
+for idx in range(len(st.session_state.products)):
+    p = st.session_state.products[idx]
+    colp1, colp2 = st.columns([4,1])
+    with colp1:
+        st.write(f"{p['name']}: {p['w']} x {p['h']} x {p['d']}")
+    with colp2:
+        if st.button("❌", key=f"remove_{p['name']}_{idx}"):
+            st.session_state.products.pop(idx)
+            break  # przerwij pętlę, Streamlit odświeży UI
 
-    st.markdown("</div>", unsafe_allow_html=True)
+st.markdown("</div>", unsafe_allow_html=True)
+
 
 # --- Right panel: visualization 3D i podsumowanie ---
 with col2:
@@ -226,3 +225,4 @@ with col2:
                     st.text(f"Objętość produktów: {V_products:.2f} cm³")
                     st.text(f"Wypełnienie: {filled_percent:.2f}%")
                     st.text(f"Pusta przestrzeń: {empty_percent:.2f}%")
+
