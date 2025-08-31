@@ -90,15 +90,36 @@ st.title("PAKOWANIE Z MICHAŁEM")
 if "products" not in st.session_state:
     st.session_state.products = []
 
+# --- Funkcja ustawiająca wymiary pudełka na podstawie przewoźnika ---
+def ustaw_wymiary_paczki(przewoznik):
+    if przewoznik == "InPost Paczkomat":
+        return "41 38 64"
+    elif przewoznik == "Poczta Polska Kurier":
+        return "65 42 40"
+    elif przewoznik == "DPD Kurier":
+        return "150 100 50"
+    elif przewoznik == "Orlen Paczka":
+        return "41 38 60"
+    else:
+        return ""
+
 # --- Layout: two columns ---
 col1, col2 = st.columns([1,2])
 
 # --- Left panel ---
 with col1:
-    st.markdown("""
-    <div style="background-color:lightsteelblue; padding:10px; border-radius:5px; font-size:14px; max-height:600px; overflow-y:auto;">
-    """, unsafe_allow_html=True)
+    st.markdown("""<div style="background-color:lightsteelblue; padding:10px; border-radius:5px; font-size:14px; max-height:600px; overflow-y:auto;">""", unsafe_allow_html=True)
     
+    st.subheader("Wybierz przewoźnika")
+    przewoznik = st.selectbox(
+        "Wybierz przewoźnika:",
+        ["", "InPost Paczkomat", "Poczta Polska Kurier", "DPD Kurier", "Orlen Paczka"]
+    )
+    
+    # Automatyczne ustawienie wymiarów pudełka
+    domyslne_wymiary = ustaw_wymiary_paczki(przewoznik)
+    boxdims_str = st.text_input("Wymiary pudełka (X Y Z):", domyslne_wymiary)
+
     st.subheader("Dodaj produkt")
     w = st.number_input("Szerokość", min_value=0.1, value=1.0)
     h = st.number_input("Wysokość", min_value=0.1, value=1.0)
@@ -116,10 +137,7 @@ with col1:
         with colp2:
             if st.button("❌", key=p['name']):
                 st.session_state.products.remove(p)
-                break  # przerwij pętlę, Streamlit odświeży UI automatycznie
-
-    st.subheader("MAX wymiary pudełka (X Y Z)")
-    boxdims_str = st.text_input("Np. 30 20 10", "32 34 64")
+                break
 
     st.markdown("</div>", unsafe_allow_html=True)
 
