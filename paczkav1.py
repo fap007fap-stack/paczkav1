@@ -2,7 +2,6 @@ import streamlit as st
 import plotly.graph_objects as go
 import numpy as np
 from itertools import permutations
-import random
 
 # === Packing logic ===
 
@@ -12,7 +11,6 @@ class Product:
         self.name = name
 
     def get_orientations(self):
-        # wszystkie 6 permutacji wymiarów
         return set(permutations(self.original_dims))
 
 class PackedProduct:
@@ -36,7 +34,7 @@ def is_collision(pos, dims, placed):
 def find_best_position(product, placed, box_limit):
     best_pos = None
     best_dims = None
-    best_score = None  # minimalna objętość pustej przestrzeni wokół
+    best_score = None
 
     for dims in product.get_orientations():
         w, h, d = dims
@@ -53,8 +51,8 @@ def find_best_position(product, placed, box_limit):
             x, y, z = pos
             if x + w <= box_limit[0] and y + d <= box_limit[1] and z + h <= box_limit[2]:
                 if not is_collision(pos, (w,d,h), placed):
-                    # Heurystyka: minimalizujemy objętość pudełka do tej pozycji
-                    score = (x+w)*(y+d)*(z+h)
+                    # Heurystyka: minimalizujemy pustą przestrzeń
+                    score = (x + w)*(y + d)*(z + h)
                     if best_score is None or score < best_score:
                         best_score = score
                         best_pos = pos
@@ -62,7 +60,6 @@ def find_best_position(product, placed, box_limit):
     return best_pos, best_dims
 
 def pack_products(products, box_limit):
-    # sortowanie po objętości malejąco
     products_sorted = sorted(products, key=lambda p: p.original_dims[0]*p.original_dims[1]*p.original_dims[2], reverse=True)
     placed = []
     max_x = max_y = max_z = 0
@@ -110,22 +107,30 @@ if "products" not in st.session_state:
 # --- Sidebar controls ---
 with st.sidebar:
     st.header("Dodaj produkt")
-    w = st.number_input("Szerokość", min_value=0.1, value=1.0)
-    h = st.number_input("Wysokość", min_value=0.1, value=1.0)
-    d = st.number_input("Głębokość", min_value=0.1, value=1.0)
+    w = st.number_input("Szerokość", min_value=0.1, value=32.0, step=0.1, key="w")
+    h = st.number_input("Wysokość", min_value=0.1, value=34.0, step=0.1, key="h")
+    d = st.number_input("Głębokość", min_value=0.1, value=64.0, step=0.1, key="d")
+
     if st.button("Dodaj produkt"):
         name = f"P{len(st.session_state.products)+1}"
         st.session_state.products.append({"w": w, "h": h, "d": d, "name": name})
+        st.session_state.w = 32.0
+        st.session_state.h = 34.0
+        st.session_state.d = 64.0
 
     if st.button("Resetuj listę"):
         st.session_state.products = []
 
     st.header("Lista produktów")
-    for p in st.session_state.products:
-        st.write(f"{p['name']}: {p['w']} x {p['h']} x {p['d']}")
+    for idx, p in enumerate(st.session_state.products):
+        cols = st.columns([0.8, 0.2])
+        cols[0].write(f"{p['name']}: {p['w']} x {p['h']} x {p['d']}")
+        if cols[1].button("➖", key=f"del_{idx}"):
+            st.session_state.products.pop(idx)
+            st.experimental_rerun()
 
     st.header("Wymiary pudełka (X Y Z)")
-    boxdims_str = st.text_input("Np. 30 20 10", "30 20 10")
+    boxdims_str = st.text_input("Np. 30 20 10", "32 34 64")
 
 # --- Main panel: packing results ---
 st.subheader("Wynik pakowania")
