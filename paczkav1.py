@@ -2,8 +2,9 @@ import streamlit as st
 import plotly.graph_objects as go
 import numpy as np
 from itertools import permutations
+import random
 
-# --- Packing logic (BLB) ---
+# --- Packing logic ---
 class Product:
     def __init__(self, width, height, depth, name=""):
         self.original_dims = (width, height, depth)
@@ -57,9 +58,8 @@ def find_best_position(product, placed, box_limit):
     return best_pos, best_dims
 
 def pack_products(products, box_limit):
-    products_sorted = sorted(products, key=lambda p: (max(p.original_dims), np.prod(p.original_dims)), reverse=True)
     placed = []
-    for p in products_sorted:
+    for p in products:
         pos,dims = find_best_position(p, placed, box_limit)
         if pos is None:
             return None, None
@@ -90,7 +90,7 @@ st.title("PAKOWANIE Z MICHAŁEM")
 if "products" not in st.session_state:
     st.session_state.products = []
 
-# --- Layout: two columns ---
+# --- Layout ---
 col1, col2 = st.columns([1,2])
 
 # --- Left panel ---
@@ -116,16 +116,21 @@ with col1:
         with colp2:
             if st.button("❌", key=p['name']):
                 st.session_state.products.remove(p)
-                break  # przerwij pętlę, Streamlit odświeży UI automatycznie
+                break
+
+    if st.button("Resetuj wszystkie produkty"):
+        st.session_state.products = []
 
     st.subheader("MAX wymiary pudełka (X Y Z)")
     boxdims_str = st.text_input("Np. 30 20 10", "32 34 64")
 
     st.markdown("</div>", unsafe_allow_html=True)
 
-# --- Right panel: visualization 3D i podsumowanie ---
+# --- Right panel ---
 with col2:
-    st.subheader("Wizualizacja pakowania")
+    st.subheader("Strategia pakowania")
+    strategy = st.selectbox("Wybierz strategię", ["Domyślna", "Malejąco według objętości", "Rosnąco według objętości", "Losowa"])
+    
     if st.button("Pakuj produkty"):
         if not st.session_state.products:
             st.error("Dodaj produkty przed pakowaniem!")
@@ -139,13 +144,26 @@ with col2:
                 box_limit=None
 
             if box_limit:
+                # --- Tworzenie obiektów produktów ---
                 product_objs = [Product(p['w'],p['h'],p['d'],p['name']) for p in st.session_state.products]
+
+                # --- Sortowanie według strategii ---
+                if strategy == "Domyślna":
+                    product_objs.sort(key=lambda p: (max(p.original_dims), np.prod(p.original_dims)), reverse=True)
+                elif strategy == "Malejąco według objętości":
+                    product_objs.sort(key=lambda p: np.prod(p.original_dims), reverse=True)
+                elif strategy == "Rosnąco według objętości":
+                    product_objs.sort(key=lambda p: np.prod(p.original_dims))
+                elif strategy == "Losowa":
+                    random.shuffle(product_objs)
+
+                # --- Pakowanie ---
                 box_size, layout = pack_products(product_objs, box_limit)
                 if layout is None:
                     st.error("Nie udało się zmieścić produktów!")
                 else:
+                    # --- Wizualizacja 3D ---
                     fig = go.Figure()
-                    # Pudełko
                     verts = cuboid_data((0,0,0), box_size)
                     faces = cuboid_faces(verts)
                     for face in faces:
@@ -192,15 +210,28 @@ with col2:
 
                     st.plotly_chart(fig, use_container_width=True)
 
-                    # --- Podsumowanie ---
-                    V_box = box_size[0]*box_size[1]*box_size[2]
-                    V_products = sum(p.dimensions[0]*p.dimensions[1]*p.dimensions[2] for p in layout)
-                    filled_percent = (V_products/V_box)*100
-                    empty_percent = 100 - filled_percent
+                    # --- Porównanie strategii ---
+                    st.subheader("Porównanie strategii pakowania")
+                    strategies = ["Domyślna", "Malejąco według objętości", "Rosnąco według objętości", "Losowa"]
+                    comparison = {}
+                    for strat in strategies:
+                        objs = [Product(p['w'],p['h'],p['d'],p['name']) for p in st.session_state.products]
+                        if strat == "Domyślna":
+                            objs.sort(key=lambda p: (max(p.original_dims), np.prod(p.original_dims)), reverse=True)
+                        elif strat == "Malejąco według objętości":
+                            objs.sort(key=lambda p: np.prod(p.original_dims), reverse=True)
+                        elif strat == "Rosnąco według objętości":
+                            objs.sort(key=lambda p: np.prod(p.original_dims))
+                        elif strat == "Losowa":
+                            random.shuffle(objs)
+                        _, lay = pack_products(objs, box_limit)
+                        if lay is None:
+                            comparison[strat] = 0
+                        else:
+                            V_products = sum(p.dimensions[0]*p.dimensions[1]*p.dimensions[2] for p in lay)
+                            V_box = box_limit[0]*box_limit[1]*box_limit[2]
+                            comparison[strat] = (V_products/V_box)*100
 
-                    st.subheader("Podsumowanie")
-                    st.text(f"Wymiary pudełka: {box_size[0]:.2f} x {box_size[1]:.2f} x {box_size[2]:.2f} cm")
-                    st.text(f"Objętość pudełka: {V_box:.2f} cm³")
-                    st.text(f"Objętość produktów: {V_products:.2f} cm³")
-                    st.text(f"Wypełnienie: {filled_percent:.2f}%")
-                    st.text(f"Pusta przestrzeń: {empty_percent:.2f}%")
+                    # --- Wyświetlenie tabeli porównawczej ---
+                    for strat, fill in comparison.items():
+                        st.text(f"{strat}: {fill:.2f}% wypełnienia")
