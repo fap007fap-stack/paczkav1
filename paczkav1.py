@@ -12,6 +12,7 @@ class Product:
         self.name = name
 
     def get_orientations(self):
+        # wszystkie 6 permutacji wymiarów
         return set(permutations(self.original_dims))
 
 class PackedProduct:
@@ -32,9 +33,11 @@ def is_collision(pos, dims, placed):
             return True
     return False
 
-def find_blb_position(product, placed, box_limit):
+def find_best_position(product, placed, box_limit):
     best_pos = None
-    best_volume = None
+    best_dims = None
+    best_score = None  # minimalna objętość pustej przestrzeni wokół
+
     for dims in product.get_orientations():
         w, h, d = dims
         candidate_positions = [(0,0,0)]
@@ -48,46 +51,30 @@ def find_blb_position(product, placed, box_limit):
             ])
         for pos in candidate_positions:
             x, y, z = pos
-            if x+w <= box_limit[0] and y+d <= box_limit[1] and z+h <= box_limit[2]:
+            if x + w <= box_limit[0] and y + d <= box_limit[1] and z + h <= box_limit[2]:
                 if not is_collision(pos, (w,d,h), placed):
-                    vol = max(x+w, box_limit[0])*max(y+d, box_limit[1])*max(z+h, box_limit[2])
-                    if best_volume is None or vol < best_volume:
-                        best_volume = vol
-                        best_pos = (pos, (w,d,h))
-    if best_pos:
-        return best_pos
-    return None, None
+                    # Heurystyka: minimalizujemy objętość pudełka do tej pozycji
+                    score = (x+w)*(y+d)*(z+h)
+                    if best_score is None or score < best_score:
+                        best_score = score
+                        best_pos = pos
+                        best_dims = (w,d,h)
+    return best_pos, best_dims
 
 def pack_products(products, box_limit):
-    n = len(products)
-    if n <= 7:
-        perms = list(permutations(products))
-    else:
-        perms = [random.sample(products, n) for _ in range(1000)]
-
-    best_layout = None
-    best_box = None
-
-    for order in perms:
-        placed = []
-        max_x = max_y = max_z = 0
-        fits = True
-        for p in order:
-            pos, dims = find_blb_position(p, placed, box_limit)
-            if pos is None:
-                fits = False
-                break
-            placed.append(PackedProduct(pos,dims,p.name))
-            max_x = max(max_x,pos[0]+dims[0])
-            max_y = max(max_y,pos[1]+dims[1])
-            max_z = max(max_z,pos[2]+dims[2])
-        if fits:
-            final_box = (max_x,max_y,max_z)
-            if best_box is None or (final_box[0]*final_box[1]*final_box[2] < best_box[0]*best_box[1]*best_box[2]):
-                best_box = final_box
-                best_layout = placed
-
-    return best_box, best_layout
+    # sortowanie po objętości malejąco
+    products_sorted = sorted(products, key=lambda p: p.original_dims[0]*p.original_dims[1]*p.original_dims[2], reverse=True)
+    placed = []
+    max_x = max_y = max_z = 0
+    for p in products_sorted:
+        pos, dims = find_best_position(p, placed, box_limit)
+        if pos is None:
+            return None, None
+        placed.append(PackedProduct(pos, dims, p.name))
+        max_x = max(max_x, pos[0]+dims[0])
+        max_y = max(max_y, pos[1]+dims[1])
+        max_z = max(max_z, pos[2]+dims[2])
+    return (max_x, max_y, max_z), placed
 
 def cuboid_data(pos, size):
     x, y, z = pos
@@ -114,13 +101,13 @@ def cuboid_faces(verts):
     ]
 
 # === Streamlit UI ===
-
 st.set_page_config(page_title="3D Packing Online", layout="wide")
 st.title("Pakowanie produktów 3D (Online)")
 
 if "products" not in st.session_state:
     st.session_state.products = []
 
+# --- Sidebar controls ---
 with st.sidebar:
     st.header("Dodaj produkt")
     w = st.number_input("Szerokość", min_value=0.1, value=1.0)
@@ -130,13 +117,23 @@ with st.sidebar:
         name = f"P{len(st.session_state.products)+1}"
         st.session_state.products.append({"w": w, "h": h, "d": d, "name": name})
 
+    if st.button("Resetuj listę"):
+        st.session_state.products = []
+
     st.header("Lista produktów")
     for p in st.session_state.products:
         st.write(f"{p['name']}: {p['w']} x {p['h']} x {p['d']}")
 
     st.header("Wymiary pudełka (X Y Z)")
     boxdims_str = st.text_input("Np. 30 20 10", "30 20 10")
-    if st.button("Pakuj produkty"):
+
+# --- Main panel: packing results ---
+st.subheader("Wynik pakowania")
+
+if st.button("Pakuj produkty"):
+    if not st.session_state.products:
+        st.error("Dodaj produkty przed pakowaniem!")
+    else:
         try:
             box_limit = tuple(map(float, boxdims_str.strip().split()))
             if len(box_limit) != 3:
@@ -145,14 +142,14 @@ with st.sidebar:
             st.error("Nieprawidłowe wymiary pudełka!")
             box_limit = None
 
-        if st.session_state.products and box_limit:
+        if box_limit:
             product_objs = [Product(p['w'], p['h'], p['d'], p['name']) for p in st.session_state.products]
             box_size, layout = pack_products(product_objs, box_limit)
 
             if layout is None:
                 st.error("Nie udało się zmieścić produktów w zadanym pudełku!")
             else:
-                # Wizualizacja 3D
+                # 3D plot
                 fig = go.Figure()
                 colors = ['red', 'blue', 'green', 'orange', 'purple', 'yellow', 'cyan', 'magenta']
                 for idx, p in enumerate(layout):
@@ -189,10 +186,11 @@ with st.sidebar:
 
                 st.plotly_chart(fig, use_container_width=True)
 
+                # summary
                 V_box = box_size[0]*box_size[1]*box_size[2]
                 V_products = sum(p.dimensions[0]*p.dimensions[1]*p.dimensions[2] for p in layout)
                 filled_percent = (V_products/V_box)*100
-                empty_percent = 100-filled_percent
+                empty_percent = 100 - filled_percent
 
                 st.subheader("Podsumowanie")
                 st.text(f"Pudełko: {box_size[0]:.2f} x {box_size[1]:.2f} x {box_size[2]:.2f} cm")
