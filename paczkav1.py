@@ -117,8 +117,8 @@ with col1:
                 st.session_state.products.pop(i)
                 st.experimental_rerun()
 
-    st.subheader("Wymiary pudełka (X Y Z)")
-    boxdims_str = st.text_input("Np. 30 20 10", "30 20 10")
+    st.subheader("Maksymalne wymiary pudełka (X Y Z)")
+    boxdims_str = st.text_input("Np. 30 20 10", "")
 
     st.markdown("</div>", unsafe_allow_html=True)
 
@@ -203,3 +203,4 @@ with col2:
                     st.text(f"Objętość produktów: {V_products:.2f} cm³")
                     st.text(f"Wypełnienie: {filled_percent:.2f}%")
                     st.text(f"Pusta przestrzeń: {empty_percent:.2f}%")
+
