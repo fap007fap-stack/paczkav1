@@ -142,6 +142,7 @@ for idx in range(len(st.session_state.products)):
             break  # przerwij pętlę, Streamlit odświeży UI
 
 st.markdown("</div>", unsafe_allow_html=True)
+
 # --- Right panel: visualization 3D i podsumowanie ---
 with col2:
     st.subheader("Wizualizacja pakowania")
@@ -223,5 +224,6 @@ with col2:
                     st.text(f"Objętość produktów: {V_products:.2f} cm³")
                     st.text(f"Wypełnienie: {filled_percent:.2f}%")
                     st.text(f"Pusta przestrzeń: {empty_percent:.2f}%")
+
 
 
