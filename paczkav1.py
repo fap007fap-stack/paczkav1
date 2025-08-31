@@ -95,8 +95,9 @@ col1, col2 = st.columns([1,2])
 
 # --- Left panel: scrollable bluegrey wstążka ---
 with col1:
+    # scrollable wstążka bez niebieskiego tła pod nagłówkiem
     st.markdown("""
-    <div style="background-color:lightsteelblue; padding:10px; border-radius:5px; font-size:14px; max-height:600px; overflow-y:auto;">
+    <div style="background-color:lightsteelblue; padding:10px; border-radius:5px; font-size:12px; max-height:600px; overflow-y:auto;">
     """, unsafe_allow_html=True)
     
     st.subheader("Dodaj produkt")
@@ -121,6 +122,7 @@ with col1:
     boxdims_str = st.text_input("Np. 30 20 10", "30 20 10")
 
     st.markdown("</div>", unsafe_allow_html=True)
+
 
 # --- Right panel: visualization 3D i podsumowanie ---
 with col2:
@@ -203,3 +205,4 @@ with col2:
                     st.text(f"Objętość produktów: {V_products:.2f} cm³")
                     st.text(f"Wypełnienie: {filled_percent:.2f}%")
                     st.text(f"Pusta przestrzeń: {empty_percent:.2f}%")
+
