@@ -142,10 +142,6 @@ with col1:
                 st.session_state.products.pop(idx)
                 break  # przerwij pętlę po usunięciu
 
-    # --- Przycisk do wyczyszczenia całej listy ---
-    if st.button("Wyczyść wszystkie produkty"):
-        st.session_state.products.clear()
-
     st.markdown("</div>", unsafe_allow_html=True)
 
 # --- Right panel: wizualizacja 3D i podsumowanie ---
