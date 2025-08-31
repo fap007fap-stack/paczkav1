@@ -3,7 +3,7 @@ import plotly.graph_objects as go
 import numpy as np
 from itertools import permutations
 
-# --- Packing logic (BLB) ---
+# --- Packing logic (advanced) ---
 class Product:
     def __init__(self, width, height, depth, name=""):
         self.original_dims = (width, height, depth)
@@ -30,12 +30,27 @@ def is_collision(pos, dims, placed):
             return True
     return False
 
-def find_best_position(product, placed, box_limit):
-    best_pos = None
-    best_dims = None
-    best_score = None
-    for dims in product.get_orientations():
-        w,h,d = dims
+def pack_minimal_box(products):
+    products_sorted = sorted(products, key=lambda p: (max(p.original_dims), np.prod(p.original_dims)), reverse=True)
+    
+    best_box = None
+    best_layout = None
+    min_volume = float('inf')
+
+    def backtrack(idx, placed):
+        nonlocal best_box, best_layout, min_volume
+        if idx == len(products_sorted):
+            max_x = max((p.position[0]+p.dimensions[0] for p in placed), default=0)
+            max_y = max((p.position[1]+p.dimensions[1] for p in placed), default=0)
+            max_z = max((p.position[2]+p.dimensions[2] for p in placed), default=0)
+            volume = max_x * max_y * max_z
+            if volume < min_volume:
+                min_volume = volume
+                best_box = (max_x, max_y, max_z)
+                best_layout = placed.copy()
+            return
+        
+        product = products_sorted[idx]
         candidate_positions = [(0,0,0)]
         for p in placed:
             px, py, pz = p.position
@@ -45,29 +60,18 @@ def find_best_position(product, placed, box_limit):
                 (px, py+pd, pz),
                 (px, py, pz+ph)
             ])
-        for pos in candidate_positions:
-            x,y,z = pos
-            if x+w <= box_limit[0] and y+d <= box_limit[1] and z+h <= box_limit[2]:
+        
+        for dims in product.get_orientations():
+            w,h,d = dims
+            for pos in candidate_positions:
+                x,y,z = pos
                 if not is_collision(pos,(w,d,h),placed):
-                    score = (x+y+z)
-                    if best_score is None or score < best_score:
-                        best_score = score
-                        best_pos = pos
-                        best_dims = (w,d,h)
-    return best_pos, best_dims
-
-def pack_products(products, box_limit):
-    products_sorted = sorted(products, key=lambda p: (max(p.original_dims), np.prod(p.original_dims)), reverse=True)
-    placed = []
-    for p in products_sorted:
-        pos,dims = find_best_position(p, placed, box_limit)
-        if pos is None:
-            return None, None
-        placed.append(PackedProduct(pos,dims,p.name))
-    max_x = max((p.position[0]+p.dimensions[0] for p in placed), default=0)
-    max_y = max((p.position[1]+p.dimensions[1] for p in placed), default=0)
-    max_z = max((p.position[2]+p.dimensions[2] for p in placed), default=0)
-    return (max_x,max_y,max_z), placed
+                    placed.append(PackedProduct(pos,dims,product.name))
+                    backtrack(idx+1, placed)
+                    placed.pop()
+    
+    backtrack(0, [])
+    return best_box, best_layout
 
 def cuboid_data(pos, size):
     x, y, z = pos
@@ -85,7 +89,7 @@ def cuboid_faces(verts):
 
 # --- Streamlit UI ---
 st.set_page_config(page_title="PAKOWANIE Z MICHAŁEM", layout="wide")
-st.title("PAKOWANIE Z MICHAŁEM")
+st.markdown("<h1 style='margin-bottom:0'>PAKOWANIE Z MICHAŁEM</h1>", unsafe_allow_html=True)
 
 if "products" not in st.session_state:
     st.session_state.products = []
@@ -93,9 +97,7 @@ if "products" not in st.session_state:
 # --- Layout: two columns ---
 col1, col2 = st.columns([1,2])
 
-# --- Left panel: scrollable bluegrey wstążka ---
 with col1:
-    # scrollable wstążka bez niebieskiego tła pod nagłówkiem
     st.markdown("""
     <div style="background-color:lightsteelblue; padding:10px; border-radius:5px; font-size:12px; max-height:600px; overflow-y:auto;">
     """, unsafe_allow_html=True)
@@ -118,91 +120,75 @@ with col1:
                 st.session_state.products.pop(i)
                 st.experimental_rerun()
 
-    st.subheader("Wymiary pudełka (X Y Z)")
-    boxdims_str = st.text_input("Np. 30 20 10", "30 20 10")
-
     st.markdown("</div>", unsafe_allow_html=True)
 
-
-# --- Right panel: visualization 3D i podsumowanie ---
 with col2:
     st.subheader("Wizualizacja pakowania")
     if st.button("Pakuj produkty"):
         if not st.session_state.products:
             st.error("Dodaj produkty przed pakowaniem!")
         else:
-            try:
-                box_limit = tuple(map(float, boxdims_str.strip().split()))
-                if len(box_limit)!=3:
-                    raise ValueError
-            except:
-                st.error("Nieprawidłowe wymiary pudełka!")
-                box_limit=None
+            product_objs = [Product(p['w'],p['h'],p['d'],p['name']) for p in st.session_state.products]
+            box_size, layout = pack_minimal_box(product_objs)
+            if layout is None:
+                st.error("Nie udało się zmieścić produktów!")
+            else:
+                fig = go.Figure()
+                verts = cuboid_data((0,0,0), box_size)
+                faces = cuboid_faces(verts)
+                for face in faces:
+                    x=[v[0] for v in face]+[face[0][0]]
+                    y=[v[1] for v in face]+[face[0][1]]
+                    z=[v[2] for v in face]+[face[0][2]]
+                    fig.add_trace(go.Mesh3d(
+                        x=x, y=y, z=z,
+                        color='sandybrown', opacity=0.2,
+                        i=[0,0,0,0], j=[1,2,3,4], k=[2,3,4,5],
+                        name='Pudełko'
+                    ))
 
-            if box_limit:
-                product_objs = [Product(p['w'],p['h'],p['d'],p['name']) for p in st.session_state.products]
-                box_size, layout = pack_products(product_objs, box_limit)
-                if layout is None:
-                    st.error("Nie udało się zmieścić produktów!")
-                else:
-                    fig = go.Figure()
-                    # Pudełko z kartonowym kolorem
-                    verts = cuboid_data((0,0,0), box_size)
-                    faces = cuboid_faces(verts)
+                colors=['red','blue','green','orange','purple','yellow','cyan','magenta']
+                for idx,p in enumerate(layout):
+                    verts=cuboid_data(p.position,p.dimensions)
+                    faces=cuboid_faces(verts)
                     for face in faces:
                         x=[v[0] for v in face]+[face[0][0]]
                         y=[v[1] for v in face]+[face[0][1]]
                         z=[v[2] for v in face]+[face[0][2]]
-                        fig.add_trace(go.Mesh3d(
-                            x=x, y=y, z=z,
-                            color='sandybrown', opacity=0.2,
-                            i=[0,0,0,0], j=[1,2,3,4], k=[2,3,4,5],
-                            name='Pudełko'
-                        ))
-
-                    colors=['red','blue','green','orange','purple','yellow','cyan','magenta']
-                    for idx,p in enumerate(layout):
-                        verts=cuboid_data(p.position,p.dimensions)
-                        faces=cuboid_faces(verts)
-                        for face in faces:
-                            x=[v[0] for v in face]+[face[0][0]]
-                            y=[v[1] for v in face]+[face[0][1]]
-                            z=[v[2] for v in face]+[face[0][2]]
-                            fig.add_trace(go.Scatter3d(
-                                x=x, y=y, z=z,
-                                mode='lines',
-                                line=dict(color=colors[idx%len(colors)], width=5),
-                                showlegend=False
-                            ))
-                        cx=p.position[0]+p.dimensions[0]/2
-                        cy=p.position[1]+p.dimensions[1]/2
-                        cz=p.position[2]+p.dimensions[2]/2
                         fig.add_trace(go.Scatter3d(
-                            x=[cx], y=[cy], z=[cz],
-                            text=[p.name],
-                            mode='text',
+                            x=x, y=y, z=z,
+                            mode='lines',
+                            line=dict(color=colors[idx%len(colors)], width=5),
                             showlegend=False
                         ))
+                    cx=p.position[0]+p.dimensions[0]/2
+                    cy=p.position[1]+p.dimensions[1]/2
+                    cz=p.position[2]+p.dimensions[2]/2
+                    fig.add_trace(go.Scatter3d(
+                        x=[cx], y=[cy], z=[cz],
+                        text=[p.name],
+                        mode='text',
+                        showlegend=False
+                    ))
 
-                    fig.update_layout(scene=dict(
-                        xaxis=dict(title='X', range=[0,box_size[0]]),
-                        yaxis=dict(title='Y', range=[0,box_size[1]]),
-                        zaxis=dict(title='Z', range=[0,box_size[2]]),
-                        aspectmode='data'
-                    ), margin=dict(l=0,r=0,b=0,t=0))
+                fig.update_layout(scene=dict(
+                    xaxis=dict(title='X', range=[0,box_size[0]]),
+                    yaxis=dict(title='Y', range=[0,box_size[1]]),
+                    zaxis=dict(title='Z', range=[0,box_size[2]]),
+                    aspectmode='data'
+                ), margin=dict(l=0,r=0,b=0,t=0))
 
-                    st.plotly_chart(fig, use_container_width=True)
+                st.plotly_chart(fig, use_container_width=True)
 
-                    # --- Podsumowanie ---
-                    V_box = box_size[0]*box_size[1]*box_size[2]
-                    V_products = sum(p.dimensions[0]*p.dimensions[1]*p.dimensions[2] for p in layout)
-                    filled_percent = (V_products/V_box)*100
-                    empty_percent = 100 - filled_percent
+                # --- Podsumowanie ---
+                V_box = box_size[0]*box_size[1]*box_size[2]
+                V_products = sum(p.dimensions[0]*p.dimensions[1]*p.dimensions[2] for p in layout)
+                filled_percent = (V_products/V_box)*100
+                empty_percent = 100 - filled_percent
 
-                    st.subheader("Podsumowanie")
-                    st.text(f"Wymiary pudełka: {box_size[0]:.2f} x {box_size[1]:.2f} x {box_size[2]:.2f} cm")
-                    st.text(f"Objętość pudełka: {V_box:.2f} cm³")
-                    st.text(f"Objętość produktów: {V_products:.2f} cm³")
-                    st.text(f"Wypełnienie: {filled_percent:.2f}%")
-                    st.text(f"Pusta przestrzeń: {empty_percent:.2f}%")
-
+                st.subheader("Podsumowanie")
+                st.text(f"Wymiary pudełka: {box_size[0]:.2f} x {box_size[1]:.2f} x {box_size[2]:.2f} cm")
+                st.text(f"Objętość pudełka: {V_box:.2f} cm³")
+                st.text(f"Objętość produktów: {V_products:.2f} cm³")
+                st.text(f"Wypełnienie: {filled_percent:.2f}%")
+                st.text(f"Pusta przestrzeń: {empty_percent:.2f}%")
