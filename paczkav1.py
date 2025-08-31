@@ -93,28 +93,28 @@ if "products" not in st.session_state:
 # --- Layout: two columns ---
 col1, col2 = st.columns([1,2])
 
-# --- Left panel: scrollable bluegrey wstążka ---
+# --- Left panel ---
 with col1:
     st.markdown("""
     <div style="background-color:lightsteelblue; padding:10px; border-radius:5px; font-size:14px; max-height:600px; overflow-y:auto;">
     """, unsafe_allow_html=True)
     
     st.subheader("Dodaj produkt")
-    w = st.number_input("Szerokość")
-    h = st.number_input("Wysokość")
-    d = st.number_input("Głębokość")
+    w = st.number_input("Szerokość", min_value=0.1, value=1.0)
+    h = st.number_input("Wysokość", min_value=0.1, value=1.0)
+    d = st.number_input("Głębokość", min_value=0.1, value=1.0)
     if st.button("Dodaj produkt"):
         name = f"P{len(st.session_state.products)+1}"
         st.session_state.products.append({"w":w,"h":h,"d":d,"name":name})
 
     st.subheader("Lista produktów")
-    for i,p in enumerate(st.session_state.products):
+    for i, p in enumerate(st.session_state.products.copy()):  # <-- iterate over copy
         colp1, colp2 = st.columns([4,1])
         with colp1:
             st.write(f"{p['name']}: {p['w']} x {p['h']} x {p['d']}")
         with colp2:
             if st.button("❌", key=f"del_{i}"):
-                st.session_state.products.pop(i)
+                st.session_state.products.remove(p)  # <-- remove safely by value
                 st.experimental_rerun()
 
     st.subheader("MAX wymiary pudełka (X Y Z)")
@@ -144,7 +144,7 @@ with col2:
                     st.error("Nie udało się zmieścić produktów!")
                 else:
                     fig = go.Figure()
-                    # Pudełko z kartonowym kolorem
+                    # Pudełko
                     verts = cuboid_data((0,0,0), box_size)
                     faces = cuboid_faces(verts)
                     for face in faces:
@@ -203,7 +203,3 @@ with col2:
                     st.text(f"Objętość produktów: {V_products:.2f} cm³")
                     st.text(f"Wypełnienie: {filled_percent:.2f}%")
                     st.text(f"Pusta przestrzeń: {empty_percent:.2f}%")
-
-
-
-
