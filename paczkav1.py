@@ -132,18 +132,21 @@ with col1:
         st.session_state.products.append({"w":w,"h":h,"d":d,"name":name})
 
     st.subheader("Lista produktów")
-    for idx in range(len(st.session_state.products)):
-        p = st.session_state.products[idx]
-        colp1, colp2 = st.columns([4,1])
-        with colp1:
-            if st.button(f"{p['name']}: {p['w']} x {p['h']} x {p['d']}", key=f"select_{p['name']}_{idx}"):
-                st.session_state.selected_product = p['name']
-        with colp2:
-            if st.button("❌", key=f"remove_{p['name']}_{idx}"):
-                st.session_state.products.pop(idx)
-                if st.session_state.selected_product == p['name']:
-                    st.session_state.selected_product = None
-                break
+    product_names = [f"{p['name']}: {p['w']} x {p['h']} x {p['d']}" for p in st.session_state.products]
+    selected_idx = st.radio("Wybierz produkt do podświetlenia:", range(len(product_names)), format_func=lambda x: product_names[x]) if product_names else None
+
+    if selected_idx is not None:
+        st.session_state.selected_product = st.session_state.products[selected_idx]['name']
+    else:
+        st.session_state.selected_product = None
+
+    # Przyciski do usuwania produktów
+    for idx, p in enumerate(st.session_state.products):
+        if st.button("❌", key=f"remove_{p['name']}_{idx}"):
+            st.session_state.products.pop(idx)
+            if st.session_state.selected_product == p['name']:
+                st.session_state.selected_product = None
+            break
 
     st.markdown("</div>", unsafe_allow_html=True)
 
