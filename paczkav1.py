@@ -97,7 +97,7 @@ def ustaw_wymiary_paczki(przewoznik):
         "Poczta Polska Kurier": "65 42 40",
         "DPD Kurier": "150 100 50",
         "Orlen Paczka": "41 38 60",
-        "Salon": "32 34 64"
+        "Salon": "34 37 64"
     }
     return sizes.get(przewoznik,"")
 
@@ -228,3 +228,4 @@ with col2:
                 st.text(f"Objętość produktów: {V_products:.2f} cm³")
                 st.text(f"Wypełnienie: {filled_percent:.2f}%")
                 st.text(f"Pusta przestrzeń: {empty_percent:.2f}%")
+
