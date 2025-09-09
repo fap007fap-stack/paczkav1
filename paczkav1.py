@@ -216,15 +216,20 @@ with col2:
                 ), margin=dict(l=0,r=0,b=0,t=0))
                 st.plotly_chart(fig, use_container_width=True)
 
-                # --- Podsumowanie ---
-                V_box = box_size[0]*box_size[1]*box_size[2]
-                V_products = sum(p.dimensions[0]*p.dimensions[1]*p.dimensions[2] for p in layout)
-                filled_percent = (V_products/V_box)*100
-                empty_percent = 100 - filled_percent
+               # --- Podsumowanie ---
+V_box = box_size[0]*box_size[1]*box_size[2]
+V_products = sum(p.dimensions[0]*p.dimensions[1]*p.dimensions[2] for p in layout)
+filled_percent = (V_products/V_box)*100
+empty_percent = 100 - filled_percent
 
-                st.subheader("Podsumowanie")
-                st.text(f"Wymiary pudełka: {box_size[0]:.2f} x {box_size[1]:.2f} x {box_size[2]:.2f} cm")
-                st.text(f"Objętość pudełka: {V_box:.2f} cm³")
-                st.text(f"Objętość produktów: {V_products:.2f} cm³")
-                st.text(f"Wypełnienie: {filled_percent:.2f}%")
-                st.text(f"Pusta przestrzeń: {empty_percent:.2f}%")
+# Waga gabarytowa (objętościowa)
+waga_gabarytowa = V_box / 6000
+
+st.subheader("Podsumowanie")
+st.text(f"Wymiary pudełka: {box_size[0]:.2f} x {box_size[1]:.2f} x {box_size[2]:.2f} cm")
+st.text(f"Objętość pudełka: {V_box:.2f} cm³")
+st.text(f"Objętość produktów: {V_products:.2f} cm³")
+st.text(f"Wypełnienie: {filled_percent:.2f}%")
+st.text(f"Pusta przestrzeń: {empty_percent:.2f}%")
+st.text(f"Waga gabarytowa: {waga_gabarytowa:.2f} kg")
+
