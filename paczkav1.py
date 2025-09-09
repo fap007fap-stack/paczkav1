@@ -216,7 +216,7 @@ with col2:
                 ), margin=dict(l=0,r=0,b=0,t=0))
                 st.plotly_chart(fig, use_container_width=True)
 
-               # --- Podsumowanie ---
+                # --- Podsumowanie ---
                 V_box = box_size[0]*box_size[1]*box_size[2]
                 V_products = sum(p.dimensions[0]*p.dimensions[1]*p.dimensions[2] for p in layout)
                 filled_percent = (V_products/V_box)*100
