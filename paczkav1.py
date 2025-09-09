@@ -229,3 +229,23 @@ with col2:
                 st.text(f"Wypełnienie: {filled_percent:.2f}%")
                 st.text(f"Pusta przestrzeń: {empty_percent:.2f}%")
 
+                # --- Sprawdzenie dla przewoźników ---
+                st.subheader("Czy paczka wejdzie do przewoźników:")
+
+                przewoznicy = {
+                    "InPost Paczkomat": (38, 41, 64),
+                    "Poczta Polska Kurier": (42, 40, 65),
+                    "Salon": (34, 62, 37)
+                }
+
+                def pasuje(box, limit):
+                    for perm in permutations(box):
+                        if all(perm[i] <= limit[i] for i in range(3)):
+                            return True
+                    return False
+
+                for nazwa, limit in przewoznicy.items():
+                    if pasuje(box_size, limit):
+                        st.markdown(f"✅ {nazwa} (max {limit[0]} x {limit[1]} x {limit[2]})")
+                    else:
+                        st.markdown(f"❌ {nazwa} (max {limit[0]} x {limit[1]} x {limit[2]})")
