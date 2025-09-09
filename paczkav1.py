@@ -95,9 +95,9 @@ def ustaw_wymiary_paczki(przewoznik):
     sizes = {
         "InPost Paczkomat": "41 38 64",
         "Poczta Polska Kurier": "65 42 40",
-        "DPD Kurier": "150 100 50",
         "Orlen Paczka": "41 38 60",
-        "Salon": "34 37 64"
+        "Salon": "34 37 64",
+        "DPD Kurier": ""  # DPD nie ma sztywnych wymiarów, tylko logika specjalna
     }
     return sizes.get(przewoznik,"")
 
@@ -228,3 +228,38 @@ with col2:
                 st.text(f"Objętość produktów: {V_products:.2f} cm³")
                 st.text(f"Wypełnienie: {filled_percent:.2f}%")
                 st.text(f"Pusta przestrzeń: {empty_percent:.2f}%")
+
+                # --- Sprawdzenie dla przewoźników ---
+                st.subheader("Czy paczka wejdzie do przewoźników:")
+
+                przewoznicy = {
+                    "InPost Paczkomat": (38, 41, 64),
+                    "Poczta Polska Kurier": (42, 40, 65),
+                    "Salon": (34, 62, 37)
+                }
+
+                def pasuje(box, limit):
+                    for perm in permutations(box):
+                        if all(perm[i] <= limit[i] for i in range(3)):
+                            return True
+                    return False
+
+                # Standardowi przewoźnicy
+                for nazwa, limit in przewoznicy.items():
+                    if pasuje(box_size, limit):
+                        st.markdown(f"✅ {nazwa} (max {limit[0]} x {limit[1]} x {limit[2]})")
+                    else:
+                        st.markdown(f"❌ {nazwa} (max {limit[0]} x {limit[1]} x {limit[2]})")
+
+                # --- Specjalne zasady dla DPD ---
+                najdluzszy_bok = max(box_size)
+                pozostale = sorted(box_size)[:2]  # dwa krótsze boki
+                obwod_podstawy = 2 * (pozostale[0] + pozostale[1])
+                suma = obwod_podstawy + najdluzszy_bok
+
+                if najdluzszy_bok <= 150 and suma <= 300:
+                    st.markdown(f"✅ DPD (najdłuższy bok ≤ 150 cm i obwód + najdłuższy bok ≤ 300 cm) "
+                                f"[Twój wynik: najdłuższy bok = {najdluzszy_bok:.1f} cm, suma = {suma:.1f} cm]")
+                else:
+                    st.markdown(f"❌ DPD (najdłuższy bok ≤ 150 cm i obwód + najdłuższy bok ≤ 300 cm) "
+                                f"[Twój wynik: najdłuższy bok = {najdluzszy_bok:.1f} cm, suma = {suma:.1f} cm]")
