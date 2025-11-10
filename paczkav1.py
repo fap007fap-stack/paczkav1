@@ -165,18 +165,32 @@ with col2:
             if st.button("🔄 Odśwież układanie"):
                 st.session_state["reshuffle"] = random.randint(0, 1000000)
 
-            # przygotowanie produktów
             product_objs = [Product(p['w'], p['h'], p['d'], p['name']) for p in st.session_state.products]
-
             num_products = len(product_objs)
             best_layout = None
             best_box = None
             best_fill = 0
 
             # --- Tryb zależny od liczby produktów ---
-            if num_products <= 7:
-                # pełne przeszukanie permutacji
-                for perm in permutations(product_objs):
+            if num_products <= 6:
+                # 720 losowych permutacji
+                all_perms = list(permutations(product_objs))
+                random.shuffle(all_perms)
+                for perm in all_perms:
+                    box_size, layout = pack_products(list(perm), box_limit, randomize=True)
+                    if layout is None:
+                        continue
+                    V_box = box_size[0]*box_size[1]*box_size[2]
+                    V_products = sum(p.dimensions[0]*p.dimensions[1]*p.dimensions[2] for p in layout)
+                    fill = V_products / V_box
+                    if fill > best_fill:
+                        best_fill = fill
+                        best_layout = layout
+                        best_box = box_size
+            elif num_products == 7:
+                # wszystkie permutacje dla 7 produktów (5040)
+                all_perms = list(permutations(product_objs))
+                for perm in all_perms:
                     box_size, layout = pack_products(list(perm), box_limit, randomize=True)
                     if layout is None:
                         continue
@@ -188,7 +202,7 @@ with col2:
                         best_layout = layout
                         best_box = box_size
             else:
-                # losowe 5040 permutacji
+                # >=8 produktów, losowe 5040 permutacji
                 num_trials = 5040
                 for _ in range(num_trials):
                     random.shuffle(product_objs)
