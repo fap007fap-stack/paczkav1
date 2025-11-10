@@ -50,7 +50,7 @@ def find_best_position(product, placed, box_limit):
             x, y, z = pos
             if x + w <= box_limit[0] and y + d <= box_limit[1] and z + h <= box_limit[2]:
                 if not is_collision(pos, (w, d, h), placed):
-                    score = (x + y + z)
+                    score = x + y + z
                     if best_score is None or score < best_score:
                         best_score = score
                         best_pos = pos
@@ -137,12 +137,12 @@ with col1:
             checked = st.checkbox(
                 f"{p['name']}: {p['w']} x {p['h']} x {p['d']}",
                 value=(p['name'] in st.session_state.selected_products),
-                key=f"check_{p['name']}"
+                key=f"check_{idx}_{p['name']}"  # unikalny klucz
             )
             if checked:
                 selected_names.append(p['name'])
         with colp2:
-            if st.button("❌", key=f"remove_{p['name']}"):
+            if st.button("❌", key=f"remove_{idx}_{p['name']}"):
                 remove_idx = idx
     if remove_idx is not None:
         st.session_state.products.pop(remove_idx)
@@ -168,23 +168,40 @@ with col2:
             # przygotowanie produktów
             product_objs = [Product(p['w'], p['h'], p['d'], p['name']) for p in st.session_state.products]
 
-            # --- SZUKANIE NAJLEPSZEGO UKŁADU ---
+            num_products = len(product_objs)
             best_layout = None
             best_box = None
             best_fill = 0
 
-            for i in range(1000):  # liczba prób losowych
-                random.shuffle(product_objs)
-                box_size, layout = pack_products(product_objs, box_limit, randomize=True)
-                if layout is None:
-                    continue
-                V_box = box_size[0] * box_size[1] * box_size[2]
-                V_products = sum(p.dimensions[0] * p.dimensions[1] * p.dimensions[2] for p in layout)
-                fill = V_products / V_box
-                if fill > best_fill:
-                    best_fill = fill
-                    best_layout = layout
-                    best_box = box_size
+            # --- Tryb zależny od liczby produktów ---
+            if num_products <= 7:
+                # pełne przeszukanie permutacji
+                for perm in permutations(product_objs):
+                    box_size, layout = pack_products(list(perm), box_limit, randomize=True)
+                    if layout is None:
+                        continue
+                    V_box = box_size[0]*box_size[1]*box_size[2]
+                    V_products = sum(p.dimensions[0]*p.dimensions[1]*p.dimensions[2] for p in layout)
+                    fill = V_products / V_box
+                    if fill > best_fill:
+                        best_fill = fill
+                        best_layout = layout
+                        best_box = box_size
+            else:
+                # losowe 5040 permutacji
+                num_trials = 5040
+                for _ in range(num_trials):
+                    random.shuffle(product_objs)
+                    box_size, layout = pack_products(product_objs, box_limit, randomize=True)
+                    if layout is None:
+                        continue
+                    V_box = box_size[0]*box_size[1]*box_size[2]
+                    V_products = sum(p.dimensions[0]*p.dimensions[1]*p.dimensions[2] for p in layout)
+                    fill = V_products / V_box
+                    if fill > best_fill:
+                        best_fill = fill
+                        best_layout = layout
+                        best_box = box_size
 
             if best_layout is None:
                 st.error("Nie udało się znaleźć pasującego układu!")
@@ -241,8 +258,8 @@ with col2:
                 st.plotly_chart(fig, use_container_width=True)
 
                 # --- Podsumowanie ---
-                V_box = box_size[0] * box_size[1] * box_size[2]
-                V_products = sum(p.dimensions[0] * p.dimensions[1] * p.dimensions[2] for p in layout)
+                V_box = box_size[0]*box_size[1]*box_size[2]
+                V_products = sum(p.dimensions[0]*p.dimensions[1]*p.dimensions[2] for p in layout)
                 filled_percent = (V_products / V_box) * 100
                 empty_percent = 100 - filled_percent
                 waga_gabarytowa = V_box / 6000
@@ -251,10 +268,6 @@ with col2:
                 st.text(f"Wymiary pudełka: {box_size[0]:.2f} x {box_size[1]:.2f} x {box_size[2]:.2f} cm")
                 st.text(f"Objętość pudełka: {V_box:.2f} cm³")
                 st.text(f"Objętość produktów: {V_products:.2f} cm³")
-                st.text(f"Wypełnienie: {filled_percent:.2f}% (najlepsze z 1000 losowych)")
+                st.text(f"Wypełnienie: {filled_percent:.2f}%")
                 st.text(f"Pusta przestrzeń: {empty_percent:.2f}%")
                 st.text(f"Waga gabarytowa: {waga_gabarytowa:.2f} kg")
-
-
-
-
