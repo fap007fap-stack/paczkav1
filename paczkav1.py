@@ -173,7 +173,7 @@ with col2:
             best_box = None
             best_fill = 0
 
-            for i in range(2500):  # liczba prób losowych
+            for i in range(1000):  # liczba prób losowych
                 random.shuffle(product_objs)
                 box_size, layout = pack_products(product_objs, box_limit, randomize=True)
                 if layout is None:
@@ -251,9 +251,10 @@ with col2:
                 st.text(f"Wymiary pudełka: {box_size[0]:.2f} x {box_size[1]:.2f} x {box_size[2]:.2f} cm")
                 st.text(f"Objętość pudełka: {V_box:.2f} cm³")
                 st.text(f"Objętość produktów: {V_products:.2f} cm³")
-                st.text(f"Wypełnienie: {filled_percent:.2f}% (najlepsze z 100 losowań)")
+                st.text(f"Wypełnienie: {filled_percent:.2f}% (najlepsze z 1000 losowych)")
                 st.text(f"Pusta przestrzeń: {empty_percent:.2f}%")
                 st.text(f"Waga gabarytowa: {waga_gabarytowa:.2f} kg")
+
 
 
 
