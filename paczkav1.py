@@ -2,6 +2,7 @@ import streamlit as st
 import plotly.graph_objects as go
 import numpy as np
 from itertools import permutations
+import random
 
 # --- Packing logic ---
 class Product:
@@ -90,6 +91,8 @@ if "products" not in st.session_state:
     st.session_state.products = []
 if "selected_products" not in st.session_state:
     st.session_state.selected_products = []
+if "reshuffle" not in st.session_state:
+    st.session_state.reshuffle = 0
 
 def ustaw_wymiary_paczki(przewoznik):
     sizes = {
@@ -140,6 +143,7 @@ with col1:
 
 with col2:
     st.subheader("Wizualizacja pakowania")
+
     if st.session_state.products:
         try:
             box_limit = tuple(map(float, boxdims_str.strip().split()))
@@ -150,8 +154,19 @@ with col2:
             box_limit=None
 
         if box_limit:
+            # --- przycisk losowego układania ---
+            if st.button("🔄 Odśwież układanie"):
+                st.session_state["reshuffle"] = random.randint(0, 1000000)
+
+            # Ustaw losowość według zapisanego stanu
+            seed = st.session_state.get("reshuffle", 0)
+            random.seed(seed)
+
             product_objs = [Product(p['w'],p['h'],p['d'],p['name']) for p in st.session_state.products]
+            random.shuffle(product_objs)  # zmienia kolejność za każdym razem
+
             box_size, layout = pack_products(product_objs, box_limit)
+
             if layout is None:
                 st.error("Nie udało się zmieścić produktów!")
             else:
@@ -175,7 +190,6 @@ with col2:
                     faces=cuboid_faces(verts)
                     highlight = p.name in st.session_state.selected_products
                     if highlight:
-                        # wypełniony kolor
                         x=[v[0] for v in verts]
                         y=[v[1] for v in verts]
                         z=[v[2] for v in verts]
@@ -187,7 +201,6 @@ with col2:
                             name=p.name
                         ))
                     else:
-                        # kontury
                         color = colors[idx % len(colors)]
                         for face in faces:
                             x=[v[0] for v in face]+[face[0][0]]
