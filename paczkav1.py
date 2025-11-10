@@ -58,9 +58,8 @@ def find_best_position(product, placed, box_limit):
     return best_pos, best_dims
 
 def pack_products(products, box_limit, randomize=False):
-    # 🔹 Jeśli tryb losowy — nie sortuj produktów
     if randomize:
-        products_sorted = products[:]  # zachowaj kolejność z losowania
+        products_sorted = products[:]
     else:
         products_sorted = sorted(products, key=lambda p: (max(p.original_dims), np.prod(p.original_dims)), reverse=True)
 
@@ -162,23 +161,39 @@ with col2:
             box_limit = None
 
         if box_limit:
-            # --- przycisk losowego układania ---
+            # przycisk odświeżania
             if st.button("🔄 Odśwież układanie"):
                 st.session_state["reshuffle"] = random.randint(0, 1000000)
 
-            seed = st.session_state.get("reshuffle", 0)
-            random.seed(seed)
-
+            # przygotowanie produktów
             product_objs = [Product(p['w'], p['h'], p['d'], p['name']) for p in st.session_state.products]
-            random.shuffle(product_objs)  # zmień kolejność
 
-            box_size, layout = pack_products(product_objs, box_limit, randomize=True)
+            # --- SZUKANIE NAJLEPSZEGO UKŁADU ---
+            best_layout = None
+            best_box = None
+            best_fill = 0
 
-            if layout is None:
-                st.error("Nie udało się zmieścić produktów!")
+            for i in range(100):  # liczba prób losowych
+                random.shuffle(product_objs)
+                box_size, layout = pack_products(product_objs, box_limit, randomize=True)
+                if layout is None:
+                    continue
+                V_box = box_size[0] * box_size[1] * box_size[2]
+                V_products = sum(p.dimensions[0] * p.dimensions[1] * p.dimensions[2] for p in layout)
+                fill = V_products / V_box
+                if fill > best_fill:
+                    best_fill = fill
+                    best_layout = layout
+                    best_box = box_size
+
+            if best_layout is None:
+                st.error("Nie udało się znaleźć pasującego układu!")
             else:
+                layout = best_layout
+                box_size = best_box
+
+                # --- Rysowanie 3D ---
                 fig = go.Figure()
-                # Pudełko
                 verts = cuboid_data((0, 0, 0), box_size)
                 faces = cuboid_faces(verts)
                 for face in faces:
@@ -188,37 +203,24 @@ with col2:
                     fig.add_trace(go.Mesh3d(
                         x=x, y=y, z=z,
                         color='sandybrown', opacity=0.2,
-                        i=[0,0,0,0], j=[1,2,3,4], k=[2,3,4,5],
                         name='Pudełko'
                     ))
+
                 colors = ['red', 'blue', 'green', 'orange', 'purple', 'yellow', 'cyan', 'magenta']
                 for idx, p in enumerate(layout):
                     verts = cuboid_data(p.position, p.dimensions)
                     faces = cuboid_faces(verts)
-                    highlight = p.name in st.session_state.selected_products
-                    if highlight:
-                        x = [v[0] for v in verts]
-                        y = [v[1] for v in verts]
-                        z = [v[2] for v in verts]
-                        fig.add_trace(go.Mesh3d(
+                    color = colors[idx % len(colors)]
+                    for face in faces:
+                        x = [v[0] for v in face] + [face[0][0]]
+                        y = [v[1] for v in face] + [face[0][1]]
+                        z = [v[2] for v in face] + [face[0][2]]
+                        fig.add_trace(go.Scatter3d(
                             x=x, y=y, z=z,
-                            color='lime',
-                            opacity=0.4,
-                            alphahull=0,
-                            name=p.name
+                            mode='lines',
+                            line=dict(color=color, width=4),
+                            showlegend=False
                         ))
-                    else:
-                        color = colors[idx % len(colors)]
-                        for face in faces:
-                            x = [v[0] for v in face] + [face[0][0]]
-                            y = [v[1] for v in face] + [face[0][1]]
-                            z = [v[2] for v in face] + [face[0][2]]
-                            fig.add_trace(go.Scatter3d(
-                                x=x, y=y, z=z,
-                                mode='lines',
-                                line=dict(color=color, width=5),
-                                showlegend=False
-                            ))
                     cx = p.position[0] + p.dimensions[0] / 2
                     cy = p.position[1] + p.dimensions[1] / 2
                     cz = p.position[2] + p.dimensions[2] / 2
@@ -228,12 +230,14 @@ with col2:
                         mode='text',
                         showlegend=False
                     ))
+
                 fig.update_layout(scene=dict(
                     xaxis=dict(title='X', range=[0, box_size[0]]),
                     yaxis=dict(title='Y', range=[0, box_size[1]]),
                     zaxis=dict(title='Z', range=[0, box_size[2]]),
                     aspectmode='data'
                 ), margin=dict(l=0, r=0, b=0, t=0))
+
                 st.plotly_chart(fig, use_container_width=True)
 
                 # --- Podsumowanie ---
@@ -247,6 +251,6 @@ with col2:
                 st.text(f"Wymiary pudełka: {box_size[0]:.2f} x {box_size[1]:.2f} x {box_size[2]:.2f} cm")
                 st.text(f"Objętość pudełka: {V_box:.2f} cm³")
                 st.text(f"Objętość produktów: {V_products:.2f} cm³")
-                st.text(f"Wypełnienie: {filled_percent:.2f}%")
+                st.text(f"Wypełnienie: {filled_percent:.2f}% (najlepsze z 100 losowań)")
                 st.text(f"Pusta przestrzeń: {empty_percent:.2f}%")
                 st.text(f"Waga gabarytowa: {waga_gabarytowa:.2f} kg")
