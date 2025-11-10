@@ -36,53 +36,59 @@ def find_best_position(product, placed, box_limit):
     best_dims = None
     best_score = None
     for dims in product.get_orientations():
-        w,h,d = dims
-        candidate_positions = [(0,0,0)]
+        w, h, d = dims
+        candidate_positions = [(0, 0, 0)]
         for p in placed:
             px, py, pz = p.position
             pw, pd, ph = p.dimensions
             candidate_positions.extend([
-                (px+pw, py, pz),
-                (px, py+pd, pz),
-                (px, py, pz+ph)
+                (px + pw, py, pz),
+                (px, py + pd, pz),
+                (px, py, pz + ph)
             ])
         for pos in candidate_positions:
-            x,y,z = pos
-            if x+w <= box_limit[0] and y+d <= box_limit[1] and z+h <= box_limit[2]:
-                if not is_collision(pos,(w,d,h),placed):
-                    score = (x+y+z)
+            x, y, z = pos
+            if x + w <= box_limit[0] and y + d <= box_limit[1] and z + h <= box_limit[2]:
+                if not is_collision(pos, (w, d, h), placed):
+                    score = (x + y + z)
                     if best_score is None or score < best_score:
                         best_score = score
                         best_pos = pos
-                        best_dims = (w,d,h)
+                        best_dims = (w, d, h)
     return best_pos, best_dims
 
-def pack_products(products, box_limit):
-    products_sorted = sorted(products, key=lambda p: (max(p.original_dims), np.prod(p.original_dims)), reverse=True)
+def pack_products(products, box_limit, randomize=False):
+    # 🔹 Jeśli tryb losowy — nie sortuj produktów
+    if randomize:
+        products_sorted = products[:]  # zachowaj kolejność z losowania
+    else:
+        products_sorted = sorted(products, key=lambda p: (max(p.original_dims), np.prod(p.original_dims)), reverse=True)
+
     placed = []
     for p in products_sorted:
-        pos,dims = find_best_position(p, placed, box_limit)
+        pos, dims = find_best_position(p, placed, box_limit)
         if pos is None:
             return None, None
-        placed.append(PackedProduct(pos,dims,p.name))
-    max_x = max((p.position[0]+p.dimensions[0] for p in placed), default=0)
-    max_y = max((p.position[1]+p.dimensions[1] for p in placed), default=0)
-    max_z = max((p.position[2]+p.dimensions[2] for p in placed), default=0)
-    return (max_x,max_y,max_z), placed
+        placed.append(PackedProduct(pos, dims, p.name))
+
+    max_x = max((p.position[0] + p.dimensions[0] for p in placed), default=0)
+    max_y = max((p.position[1] + p.dimensions[1] for p in placed), default=0)
+    max_z = max((p.position[2] + p.dimensions[2] for p in placed), default=0)
+    return (max_x, max_y, max_z), placed
 
 def cuboid_data(pos, size):
     x, y, z = pos
     dx, dy, dz = size
-    return np.array([[x,y,z],[x+dx,y,z],[x+dx,y+dy,z],[x,y+dy,z],
-                     [x,y,z+dz],[x+dx,y,z+dz],[x+dx,y+dy,z+dz],[x,y+dy,z+dz]])
+    return np.array([[x, y, z], [x + dx, y, z], [x + dx, y + dy, z], [x, y + dy, z],
+                     [x, y, z + dz], [x + dx, y, z + dz], [x + dx, y + dy, z + dz], [x, y + dy, z + dz]])
 
 def cuboid_faces(verts):
-    return [[verts[j] for j in [0,1,2,3]],
-            [verts[j] for j in [4,5,6,7]],
-            [verts[j] for j in [0,1,5,4]],
-            [verts[j] for j in [2,3,7,6]],
-            [verts[j] for j in [1,2,6,5]],
-            [verts[j] for j in [4,7,3,0]]]
+    return [[verts[j] for j in [0, 1, 2, 3]],
+            [verts[j] for j in [4, 5, 6, 7]],
+            [verts[j] for j in [0, 1, 5, 4]],
+            [verts[j] for j in [2, 3, 7, 6]],
+            [verts[j] for j in [1, 2, 6, 5]],
+            [verts[j] for j in [4, 7, 3, 0]]]
 
 # --- Streamlit setup ---
 st.set_page_config(page_title="Pakowanie", layout="wide")
@@ -102,9 +108,9 @@ def ustaw_wymiary_paczki(przewoznik):
         "Orlen Paczka": "41 38 60",
         "Salon": "34 37 64"
     }
-    return sizes.get(przewoznik,"")
+    return sizes.get(przewoznik, "")
 
-col1, col2 = st.columns([1,2])
+col1, col2 = st.columns([1, 2])
 
 with col1:
     st.subheader("Wybierz przewoźnika")
@@ -121,17 +127,19 @@ with col1:
     name_input = st.text_input("Nazwa produktu (opcjonalna):", "")
     if st.button("Dodaj produkt"):
         name = name_input if name_input.strip() else f"P{len(st.session_state.products)+1}"
-        st.session_state.products.append({"w":w,"h":h,"d":d,"name":name})
+        st.session_state.products.append({"w": w, "h": h, "d": d, "name": name})
 
     st.subheader("Lista produktów")
     remove_idx = None
     selected_names = []
     for idx, p in enumerate(st.session_state.products):
-        colp1, colp2 = st.columns([4,1])
+        colp1, colp2 = st.columns([4, 1])
         with colp1:
-            checked = st.checkbox(f"{p['name']}: {p['w']} x {p['h']} x {p['d']}", 
-                                  value=(p['name'] in st.session_state.selected_products), 
-                                  key=f"check_{p['name']}")
+            checked = st.checkbox(
+                f"{p['name']}: {p['w']} x {p['h']} x {p['d']}",
+                value=(p['name'] in st.session_state.selected_products),
+                key=f"check_{p['name']}"
+            )
             if checked:
                 selected_names.append(p['name'])
         with colp2:
@@ -147,52 +155,51 @@ with col2:
     if st.session_state.products:
         try:
             box_limit = tuple(map(float, boxdims_str.strip().split()))
-            if len(box_limit)!=3:
+            if len(box_limit) != 3:
                 raise ValueError
         except:
             st.error("Nieprawidłowe wymiary pudełka!")
-            box_limit=None
+            box_limit = None
 
         if box_limit:
             # --- przycisk losowego układania ---
             if st.button("🔄 Odśwież układanie"):
                 st.session_state["reshuffle"] = random.randint(0, 1000000)
 
-            # Ustaw losowość według zapisanego stanu
             seed = st.session_state.get("reshuffle", 0)
             random.seed(seed)
 
-            product_objs = [Product(p['w'],p['h'],p['d'],p['name']) for p in st.session_state.products]
-            random.shuffle(product_objs)  # zmienia kolejność za każdym razem
+            product_objs = [Product(p['w'], p['h'], p['d'], p['name']) for p in st.session_state.products]
+            random.shuffle(product_objs)  # zmień kolejność
 
-            box_size, layout = pack_products(product_objs, box_limit)
+            box_size, layout = pack_products(product_objs, box_limit, randomize=True)
 
             if layout is None:
                 st.error("Nie udało się zmieścić produktów!")
             else:
                 fig = go.Figure()
                 # Pudełko
-                verts = cuboid_data((0,0,0), box_size)
+                verts = cuboid_data((0, 0, 0), box_size)
                 faces = cuboid_faces(verts)
                 for face in faces:
-                    x=[v[0] for v in face]+[face[0][0]]
-                    y=[v[1] for v in face]+[face[0][1]]
-                    z=[v[2] for v in face]+[face[0][2]]
+                    x = [v[0] for v in face] + [face[0][0]]
+                    y = [v[1] for v in face] + [face[0][1]]
+                    z = [v[2] for v in face] + [face[0][2]]
                     fig.add_trace(go.Mesh3d(
                         x=x, y=y, z=z,
                         color='sandybrown', opacity=0.2,
                         i=[0,0,0,0], j=[1,2,3,4], k=[2,3,4,5],
                         name='Pudełko'
                     ))
-                colors=['red','blue','green','orange','purple','yellow','cyan','magenta']
-                for idx,p in enumerate(layout):
-                    verts=cuboid_data(p.position,p.dimensions)
-                    faces=cuboid_faces(verts)
+                colors = ['red', 'blue', 'green', 'orange', 'purple', 'yellow', 'cyan', 'magenta']
+                for idx, p in enumerate(layout):
+                    verts = cuboid_data(p.position, p.dimensions)
+                    faces = cuboid_faces(verts)
                     highlight = p.name in st.session_state.selected_products
                     if highlight:
-                        x=[v[0] for v in verts]
-                        y=[v[1] for v in verts]
-                        z=[v[2] for v in verts]
+                        x = [v[0] for v in verts]
+                        y = [v[1] for v in verts]
+                        z = [v[2] for v in verts]
                         fig.add_trace(go.Mesh3d(
                             x=x, y=y, z=z,
                             color='lime',
@@ -203,18 +210,18 @@ with col2:
                     else:
                         color = colors[idx % len(colors)]
                         for face in faces:
-                            x=[v[0] for v in face]+[face[0][0]]
-                            y=[v[1] for v in face]+[face[0][1]]
-                            z=[v[2] for v in face]+[face[0][2]]
+                            x = [v[0] for v in face] + [face[0][0]]
+                            y = [v[1] for v in face] + [face[0][1]]
+                            z = [v[2] for v in face] + [face[0][2]]
                             fig.add_trace(go.Scatter3d(
                                 x=x, y=y, z=z,
                                 mode='lines',
                                 line=dict(color=color, width=5),
                                 showlegend=False
                             ))
-                    cx=p.position[0]+p.dimensions[0]/2
-                    cy=p.position[1]+p.dimensions[1]/2
-                    cz=p.position[2]+p.dimensions[2]/2
+                    cx = p.position[0] + p.dimensions[0] / 2
+                    cy = p.position[1] + p.dimensions[1] / 2
+                    cz = p.position[2] + p.dimensions[2] / 2
                     fig.add_trace(go.Scatter3d(
                         x=[cx], y=[cy], z=[cz],
                         text=[p.name],
@@ -222,20 +229,18 @@ with col2:
                         showlegend=False
                     ))
                 fig.update_layout(scene=dict(
-                    xaxis=dict(title='X', range=[0,box_size[0]]),
-                    yaxis=dict(title='Y', range=[0,box_size[1]]),
-                    zaxis=dict(title='Z', range=[0,box_size[2]]),
+                    xaxis=dict(title='X', range=[0, box_size[0]]),
+                    yaxis=dict(title='Y', range=[0, box_size[1]]),
+                    zaxis=dict(title='Z', range=[0, box_size[2]]),
                     aspectmode='data'
-                ), margin=dict(l=0,r=0,b=0,t=0))
+                ), margin=dict(l=0, r=0, b=0, t=0))
                 st.plotly_chart(fig, use_container_width=True)
 
                 # --- Podsumowanie ---
-                V_box = box_size[0]*box_size[1]*box_size[2]
-                V_products = sum(p.dimensions[0]*p.dimensions[1]*p.dimensions[2] for p in layout)
-                filled_percent = (V_products/V_box)*100
+                V_box = box_size[0] * box_size[1] * box_size[2]
+                V_products = sum(p.dimensions[0] * p.dimensions[1] * p.dimensions[2] for p in layout)
+                filled_percent = (V_products / V_box) * 100
                 empty_percent = 100 - filled_percent
-
-                # Waga gabarytowa (objętościowa)
                 waga_gabarytowa = V_box / 6000
 
                 st.subheader("Podsumowanie")
